@@ -2,7 +2,9 @@
 
 NexusFlow is a local-first, terminal-style interface that orchestrates a team of specialized AI agents to build software. It mimics a professional development environment with role-based agents (Architect, Coder, QA, Security), a virtual file system, and integrated telemetry.
 
-![NexusFlow Terminal](https://via.placeholder.com/800x450/0a0a0a/00ff9d?text=NEXUSFLOW+TERMINAL)
+
+<img width="1920" height="970" alt="Screenshot 2025-11-23 040048" src="https://github.com/user-attachments/assets/1f0d12cf-4adc-4ebb-80bb-3ea3c0a51021" />
+
 
 ## 🚀 Features
 
