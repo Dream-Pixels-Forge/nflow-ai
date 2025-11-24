@@ -38,6 +38,7 @@ import { TaskDashboard } from './components/TaskDashboard';
 import { SettingsModal } from './components/SettingsModal';
 import { IncomingTransmission } from './components/IncomingTransmission';
 import { ProjectManager } from './components/ProjectManager'; // Import ProjectManager
+import { ConfigurationProvider } from './services/config/configStore';
 
 // Icon Mapping to prevent undefined render errors
 const AGENT_ICONS: Record<string, React.ElementType> = {
@@ -440,291 +441,293 @@ export default function App() {
   const currentMessages = agentHistories[activeAgent];
 
   return (
-    <div className="h-screen w-screen bg-nexus-900 text-gray-300 font-mono flex overflow-hidden relative">
-      
-      {/* Transition Overlay */}
-      {transitionTarget && <IncomingTransmission targetAgent={transitionTarget} />}
+    <ConfigurationProvider>
+      <div className="h-screen w-screen bg-nexus-900 text-gray-300 font-mono flex overflow-hidden relative">
 
-      {/* CRT Scanline Effect Overlay */}
-      <div className={`absolute inset-0 pointer-events-none z-50 scanline-overlay opacity-20 ${!settings.animations ? 'hidden' : ''}`}></div>
-      <div className={`absolute inset-0 pointer-events-none z-50 animate-scanline bg-gradient-to-b from-transparent via-nexus-accent/5 to-transparent h-[10%] ${!settings.animations ? 'hidden' : ''}`}></div>
+        {/* Transition Overlay */}
+        {transitionTarget && <IncomingTransmission targetAgent={transitionTarget} />}
 
-      {/* Task Dashboard Overlay */}
-      {showTaskDashboard && (
-         <TaskDashboard 
-            tasks={tasks} 
-            onClose={() => setShowTaskDashboard(false)} 
-            onUpdateStatus={handleUpdateTaskStatus}
-         />
-      )}
+        {/* CRT Scanline Effect Overlay */}
+        <div className={`absolute inset-0 pointer-events-none z-50 scanline-overlay opacity-20 ${!settings.animations ? 'hidden' : ''}`}></div>
+        <div className={`absolute inset-0 pointer-events-none z-50 animate-scanline bg-gradient-to-b from-transparent via-nexus-accent/5 to-transparent h-[10%] ${!settings.animations ? 'hidden' : ''}`}></div>
 
-      {/* Project Manager (VSCode Bridge) Overlay */}
-      {showProjectManager && (
-        <ProjectManager 
-            onClose={() => setShowProjectManager(false)}
-            tasks={tasks}
-            agentHistories={agentHistories}
-            files={virtualFiles}
-        />
-      )}
+        {/* Task Dashboard Overlay */}
+        {showTaskDashboard && (
+           <TaskDashboard
+              tasks={tasks}
+              onClose={() => setShowTaskDashboard(false)}
+              onUpdateStatus={handleUpdateTaskStatus}
+           />
+        )}
 
-      {/* Settings Modal */}
-      {showSettings && (
-         <SettingsModal 
-            settings={settings}
-            onUpdate={setSettings}
-            onClose={() => setShowSettings(false)}
-         />
-      )}
+        {/* Project Manager (VSCode Bridge) Overlay */}
+        {showProjectManager && (
+          <ProjectManager
+              onClose={() => setShowProjectManager(false)}
+              tasks={tasks}
+              agentHistories={agentHistories}
+              files={virtualFiles}
+          />
+        )}
 
-      {/* Left Sidebar: System Stats & Grid */}
-      <div className="w-80 bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl">
-        <div className={`p-4 border-b border-nexus-border flex items-center gap-3 transition-all duration-300 ${pendingSwitch ? 'bg-nexus-900' : 'bg-nexus-800/30'}`}>
-          {pendingSwitch ? (
-            <>
-               <div className={`p-1.5 rounded-sm border animate-pulse ${AGENTS[pendingSwitch].color.replace('text-', 'border-')} bg-opacity-10`}>
-                  <ArrowRightLeft size={18} className={AGENTS[pendingSwitch].color} />
-               </div>
-               <div className="flex-1 min-w-0">
-                  <h1 className={`font-bold text-xs tracking-wider mb-0.5 ${AGENTS[pendingSwitch].color} truncate`}>
-                      SUGGESTION: {AGENTS[pendingSwitch].id}
-                  </h1>
-                   <div className="flex items-center gap-2">
-                      <button 
-                          onClick={() => handleSwitchAgent(pendingSwitch)} 
-                          className="text-[10px] bg-nexus-800 hover:bg-nexus-700 text-nexus-accent px-2 py-0.5 rounded border border-nexus-border hover:border-nexus-accent transition-colors flex items-center gap-1"
-                      >
-                          <Check size={10} /> ACCEPT
-                      </button>
-                      <button 
-                          onClick={() => setPendingSwitch(null)} 
-                          className="text-[10px] text-nexus-dim hover:text-gray-300 px-1 py-0.5 transition-colors"
-                      >
-                          DISMISS
-                      </button>
-                  </div>
-               </div>
-            </>
-          ) : (
-            <>
-              <div className="bg-nexus-accent text-black p-1 rounded-sm">
-                <FolderOpen size={20} />
-              </div>
-              <div className="flex-1">
-                <h1 className="font-bold text-white tracking-wider text-sm">PROJECT ROOT</h1>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-[10px] text-nexus-accent">
-                        <span className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-pulse"></span>
-                        ACTIVE
-                    </div>
-                    {tasks.length > 0 && (
-                        <button 
-                            onClick={() => setShowTaskDashboard(true)} 
-                            className="text-[9px] bg-nexus-800 px-1.5 rounded border border-nexus-border hover:text-white transition-colors flex items-center gap-1"
+        {/* Settings Modal */}
+        {showSettings && (
+           <SettingsModal
+              settings={settings}
+              onUpdate={setSettings}
+              onClose={() => setShowSettings(false)}
+           />
+        )}
+
+        {/* Left Sidebar: System Stats & Grid */}
+        <div className="w-80 bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl">
+          <div className={`p-4 border-b border-nexus-border flex items-center gap-3 transition-all duration-300 ${pendingSwitch ? 'bg-nexus-900' : 'bg-nexus-800/30'}`}>
+            {pendingSwitch ? (
+              <>
+                 <div className={`p-1.5 rounded-sm border animate-pulse ${AGENTS[pendingSwitch].color.replace('text-', 'border-')} bg-opacity-10`}>
+                    <ArrowRightLeft size={18} className={AGENTS[pendingSwitch].color} />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                    <h1 className={`font-bold text-xs tracking-wider mb-0.5 ${AGENTS[pendingSwitch].color} truncate`}>
+                        SUGGESTION: {AGENTS[pendingSwitch].id}
+                    </h1>
+                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handleSwitchAgent(pendingSwitch)}
+                            className="text-[10px] bg-nexus-800 hover:bg-nexus-700 text-nexus-accent px-2 py-0.5 rounded border border-nexus-border hover:border-nexus-accent transition-colors flex items-center gap-1"
                         >
-                            <ListTodo size={9} />
-                            {tasks.filter(t => t.status !== 'done').length} TASKS
+                            <Check size={10} /> ACCEPT
                         </button>
-                    )}
+                        <button
+                            onClick={() => setPendingSwitch(null)}
+                            className="text-[10px] text-nexus-dim hover:text-gray-300 px-1 py-0.5 transition-colors"
+                        >
+                            DISMISS
+                        </button>
+                    </div>
+                 </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-nexus-accent text-black p-1 rounded-sm">
+                  <FolderOpen size={20} />
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <AgentGrid activeAgent={activeAgent} />
-        </div>
-
-        <div className="h-[400px] border-t border-nexus-border flex flex-col bg-nexus-900">
-           <div className="flex border-b border-nexus-border">
-              <button
-                onClick={() => setSidebarTab('telemetry')}
-                className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-                  sidebarTab === 'telemetry' 
-                    ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent' 
-                    : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
-                }`}
-              >
-                Telemetry
-              </button>
-              <button
-                onClick={() => setSidebarTab('tools')}
-                className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-                  sidebarTab === 'tools' 
-                    ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent' 
-                    : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
-                }`}
-              >
-                Tools
-              </button>
-           </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-              {sidebarTab === 'telemetry' 
-                ? <SystemMonitor /> 
-                : <ToolsPanel toolState={toolState} setToolState={setToolState} />
-              }
-           </div>
-        </div>
-      </div>
-
-      {/* Main Terminal Area */}
-      <div className="flex-1 flex flex-col bg-[#0a0a0a] z-10 relative" onClick={handleContainerClick}>
-        
-        {/* Header Bar */}
-        <div className="h-12 border-b border-nexus-border flex items-center justify-between px-6 bg-nexus-900/80 backdrop-blur">
-          <div className="flex items-center gap-4">
-             <span className={`text-xs font-bold px-2 py-1 rounded ${AGENTS[activeAgent].color.replace('text-', 'bg-').replace('400','900').replace('500','900')} bg-opacity-20 border border-opacity-30 ${AGENTS[activeAgent].color.replace('text-', 'border-')}`}>
-                <span className="opacity-50">./agents/</span>{activeAgent}
-             </span>
-             <span className="text-xs text-nexus-dim">/// {AGENTS[activeAgent].description}</span>
+                <div className="flex-1">
+                  <h1 className="font-bold text-white tracking-wider text-sm">PROJECT ROOT</h1>
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-[10px] text-nexus-accent">
+                          <span className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-pulse"></span>
+                          ACTIVE
+                      </div>
+                      {tasks.length > 0 && (
+                          <button
+                              onClick={() => setShowTaskDashboard(true)}
+                              className="text-[9px] bg-nexus-800 px-1.5 rounded border border-nexus-border hover:text-white transition-colors flex items-center gap-1"
+                          >
+                              <ListTodo size={9} />
+                              {tasks.filter(t => t.status !== 'done').length} TASKS
+                          </button>
+                      )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-nexus-dim text-xs">
-               <ShieldCheck size={14} className="text-nexus-accent" />
-               <span>SECURE ENCLAVE</span>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <AgentGrid activeAgent={activeAgent} />
+          </div>
+
+          <div className="h-[400px] border-t border-nexus-border flex flex-col bg-nexus-900">
+             <div className="flex border-b border-nexus-border">
+                <button
+                  onClick={() => setSidebarTab('telemetry')}
+                  className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
+                    sidebarTab === 'telemetry'
+                      ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
+                      : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+                  }`}
+                >
+                  Telemetry
+                </button>
+                <button
+                  onClick={() => setSidebarTab('tools')}
+                  className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
+                    sidebarTab === 'tools'
+                      ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
+                      : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+                  }`}
+                >
+                  Tools
+                </button>
+             </div>
+             <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                {sidebarTab === 'telemetry'
+                  ? <SystemMonitor />
+                  : <ToolsPanel toolState={toolState} setToolState={setToolState} />
+                }
+             </div>
+          </div>
+        </div>
+
+        {/* Main Terminal Area */}
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] z-10 relative" onClick={handleContainerClick}>
+
+          {/* Header Bar */}
+          <div className="h-12 border-b border-nexus-border flex items-center justify-between px-6 bg-nexus-900/80 backdrop-blur">
+            <div className="flex items-center gap-4">
+               <span className={`text-xs font-bold px-2 py-1 rounded ${AGENTS[activeAgent].color.replace('text-', 'bg-').replace('400','900').replace('500','900')} bg-opacity-20 border border-opacity-30 ${AGENTS[activeAgent].color.replace('text-', 'border-')}`}>
+                  <span className="opacity-50">./agents/</span>{activeAgent}
+               </span>
+               <span className="text-xs text-nexus-dim">/// {AGENTS[activeAgent].description}</span>
             </div>
 
-            {/* VSCode Bridge Button (Always visible for demo purposes, but logically highlighted for Ollama) */}
-            <button 
-                onClick={() => setShowProjectManager(true)}
-                className={`transition-colors p-1.5 rounded hover:bg-nexus-800 border border-transparent hover:border-blue-900/50 flex items-center gap-2 ${virtualFiles.length > INITIAL_FILES.length ? 'text-nexus-accent animate-pulse' : 'text-blue-400 hover:text-blue-300'}`}
-                title="VSCode Bridge (Local File System)"
-              >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-nexus-dim text-xs">
+                 <ShieldCheck size={14} className="text-nexus-accent" />
+                 <span>SECURE ENCLAVE</span>
+              </div>
+
+              {/* VSCode Bridge Button (Always visible for demo purposes, but logically highlighted for Ollama) */}
+              <button
+                  onClick={() => setShowProjectManager(true)}
+                  className={`transition-colors p-1.5 rounded hover:bg-nexus-800 border border-transparent hover:border-blue-900/50 flex items-center gap-2 ${virtualFiles.length > INITIAL_FILES.length ? 'text-nexus-accent animate-pulse' : 'text-blue-400 hover:text-blue-300'}`}
+                  title="VSCode Bridge (Local File System)"
+                >
                 <Laptop size={16} />
                 <span className="text-xs font-bold hidden md:inline">VSCODE BRIDGE</span>
-            </button>
+              </button>
 
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="text-nexus-dim hover:text-nexus-accent transition-colors p-1 rounded hover:bg-nexus-800"
-              title="Settings"
-            >
-              <SettingsIcon size={16} />
-            </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="text-nexus-dim hover:text-nexus-accent transition-colors p-1 rounded hover:bg-nexus-800"
+                title="Settings"
+              >
+                <SettingsIcon size={16} />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Messages Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
-          
-          {currentMessages.length === 0 && (
-             <div className="flex flex-col items-center justify-center h-full text-nexus-dim opacity-50">
-                <FolderOpen size={48} />
-                <p className="mt-4 font-mono text-sm">CHANNEL EMPTY</p>
-                <p className="text-xs">Type to initialize {AGENTS[activeAgent].name}</p>
-             </div>
-          )}
+          {/* Messages Scroll Area */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
 
-          {currentMessages.map((msg) => {
-             // Safe Icon Rendering using Map
-             const AgentIcon = AGENT_ICONS[AGENTS[msg.agent].icon] || MessageSquare;
-             
-             const isUser = msg.role === 'user';
-             const isSystem = msg.role === 'system';
+            {currentMessages.length === 0 && (
+               <div className="flex flex-col items-center justify-center h-full text-nexus-dim opacity-50">
+                  <FolderOpen size={48} />
+                  <p className="mt-4 font-mono text-sm">CHANNEL EMPTY</p>
+                  <p className="text-xs">Type to initialize {AGENTS[activeAgent].name}</p>
+               </div>
+            )}
 
-             if (isSystem) {
-                return (
-                    <div key={msg.id} className="flex justify-center my-4 animate-fade-in">
-                        <span className={`text-xs font-mono px-3 py-1 border ${msg.isError ? 'border-red-900 text-red-500 bg-red-900/10' : 'border-nexus-border text-nexus-dim bg-nexus-800/50'}`}>
-                             {msg.isError && <AlertTriangle size={12} className="inline mr-2 mb-0.5"/>}
-                             {msg.content}
-                        </span>
-                    </div>
-                )
-             }
+            {currentMessages.map((msg) => {
+               // Safe Icon Rendering using Map
+               const AgentIcon = AGENT_ICONS[AGENTS[msg.agent].icon] || MessageSquare;
 
-             return (
-                <div key={msg.id} className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} group animate-fade-in`}>
-                    <div className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center ${isUser ? 'bg-nexus-dim text-white' : `${AGENTS[msg.agent].color} bg-nexus-800 border border-nexus-border`}`}>
-                        {isUser ? <User size={16} /> : <AgentIcon size={16} />}
-                    </div>
-                    
-                    <div className={`max-w-[80%] space-y-1`}>
-                        <div className={`flex items-center gap-2 text-[10px] uppercase ${isUser ? 'justify-end text-nexus-dim' : AGENTS[msg.agent].color}`}>
-                            {isUser ? 'YOU' : msg.agent} <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                        </div>
-                        <div className={`p-4 rounded-sm text-sm leading-relaxed whitespace-pre-wrap font-mono shadow-lg
-                            ${isUser 
-                                ? 'bg-nexus-800 text-gray-200 border border-nexus-border' 
-                                : 'bg-black text-gray-300 border-l-2 border-nexus-border ' + AGENTS[msg.agent].color.replace('text-', 'border-')
-                            }`}>
-                            {msg.content}
-                            
-                            {/* Render Grounding Sources if present */}
-                            {msg.grounding && msg.grounding.urls.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-nexus-border/50">
-                                <div className="text-[10px] text-nexus-dim mb-1 flex items-center gap-1">
-                                  <Globe size={10} />
-                                  <span>VERIFIED SOURCES</span>
+               const isUser = msg.role === 'user';
+               const isSystem = msg.role === 'system';
+
+               if (isSystem) {
+                  return (
+                      <div key={msg.id} className="flex justify-center my-4 animate-fade-in">
+                          <span className={`text-xs font-mono px-3 py-1 border ${msg.isError ? 'border-red-900 text-red-500 bg-red-900/10' : 'border-nexus-border text-nexus-dim bg-nexus-800/50'}`}>
+                               {msg.isError && <AlertTriangle size={12} className="inline mr-2 mb-0.5"/>}
+                               {msg.content}
+                          </span>
+                      </div>
+                  )
+               }
+
+               return (
+                  <div key={msg.id} className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} group animate-fade-in`}>
+                      <div className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center ${isUser ? 'bg-nexus-dim text-white' : `${AGENTS[msg.agent].color} bg-nexus-800 border border-nexus-border`}`}>
+                          {isUser ? <User size={16} /> : <AgentIcon size={16} />}
+                      </div>
+
+                      <div className={`max-w-[80%] space-y-1`}>
+                          <div className={`flex items-center gap-2 text-[10px] uppercase ${isUser ? 'justify-end text-nexus-dim' : AGENTS[msg.agent].color}`}>
+                              {isUser ? 'YOU' : msg.agent} <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                          </div>
+                          <div className={`p-4 rounded-sm text-sm leading-relaxed whitespace-pre-wrap font-mono shadow-lg
+                              ${isUser
+                                  ? 'bg-nexus-800 text-gray-200 border border-nexus-border'
+                                  : 'bg-black text-gray-300 border-l-2 border-nexus-border ' + AGENTS[msg.agent].color.replace('text-', 'border-')
+                              }`}>
+                              {msg.content}
+
+                              {/* Render Grounding Sources if present */}
+                              {msg.grounding && msg.grounding.urls.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-nexus-border/50">
+                                  <div className="text-[10px] text-nexus-dim mb-1 flex items-center gap-1">
+                                    <Globe size={10} />
+                                    <span>VERIFIED SOURCES</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {msg.grounding.urls.map((url, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-2 py-1 bg-nexus-900/80 border border-nexus-border hover:border-nexus-accent text-[10px] text-nexus-accent rounded transition-colors truncate max-w-[200px]"
+                                      >
+                                        <ExternalLink size={8} />
+                                        {new URL(url).hostname}
+                                      </a>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {msg.grounding.urls.map((url, idx) => (
-                                    <a 
-                                      key={idx} 
-                                      href={url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-1 px-2 py-1 bg-nexus-900/80 border border-nexus-border hover:border-nexus-accent text-[10px] text-nexus-accent rounded transition-colors truncate max-w-[200px]"
-                                    >
-                                      <ExternalLink size={8} />
-                                      {new URL(url).hostname}
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-             );
-          })}
-          {isProcessing && (
-            <div className="flex gap-4 animate-pulse">
-                 <div className={`w-8 h-8 rounded bg-nexus-800 border border-nexus-border flex items-center justify-center ${AGENTS[activeAgent].color}`}>
-                     <Loader2 size={16} className="animate-spin" />
-                 </div>
-                 <div className="flex items-center text-xs text-nexus-dim font-mono">
-                    {activeAgent} IS THINKING ({settings.aiProvider === 'ollama' ? 'LOCAL' : 'CLOUD'})...
-                 </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+               );
+            })}
+            {isProcessing && (
+              <div className="flex gap-4 animate-pulse">
+                   <div className={`w-8 h-8 rounded bg-nexus-800 border border-nexus-border flex items-center justify-center ${AGENTS[activeAgent].color}`}>
+                       <Loader2 size={16} className="animate-spin" />
+                   </div>
+                   <div className="flex items-center text-xs text-nexus-dim font-mono">
+                      {activeAgent} IS THINKING ({settings.aiProvider === 'ollama' ? 'LOCAL' : 'CLOUD'})...
+                   </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-        {/* Input Area */}
-        <div className="p-4 bg-nexus-900 border-t border-nexus-border z-50">
-            <div className="flex items-center gap-2 bg-black border border-nexus-border p-3 rounded-sm focus-within:border-nexus-accent transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                <span className={`${AGENTS[activeAgent].color} font-bold text-lg`}>›</span>
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDownInput}
-                    placeholder={`/${activeAgent.toLowerCase()}, /tasks or message...`}
-                    className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-700"
-                    autoComplete="off"
-                    disabled={!!transitionTarget}
-                />
-                <div className="flex items-center gap-2">
-                     <div className="hidden md:flex items-center gap-1 px-2 py-1 bg-nexus-800 rounded text-[10px] text-gray-500 border border-nexus-border">
-                        <Command size={10} />
-                        <span>ENTER</span>
-                     </div>
-                    <button 
-                        onClick={handleSendMessage}
-                        disabled={isProcessing || !!transitionTarget}
-                        className={`p-2 rounded hover:bg-nexus-800 transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'text-nexus-accent'}`}
-                    >
-                        <Send size={18} />
-                    </button>
-                </div>
-            </div>
-        </div>
+          {/* Input Area */}
+          <div className="p-4 bg-nexus-900 border-t border-nexus-border z-50">
+              <div className="flex items-center gap-2 bg-black border border-nexus-border p-3 rounded-sm focus-within:border-nexus-accent transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                  <span className={`${AGENTS[activeAgent].color} font-bold text-lg`}>›</span>
+                  <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDownInput}
+                      placeholder={`/${activeAgent.toLowerCase()}, /tasks or message...`}
+                      className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-700"
+                      autoComplete="off"
+                      disabled={!!transitionTarget}
+                  />
+                  <div className="flex items-center gap-2">
+                       <div className="hidden md:flex items-center gap-1 px-2 py-1 bg-nexus-800 rounded text-[10px] text-gray-500 border border-nexus-border">
+                          <Command size={10} />
+                          <span>ENTER</span>
+                       </div>
+                      <button
+                          onClick={handleSendMessage}
+                          disabled={isProcessing || !!transitionTarget}
+                          className={`p-2 rounded hover:bg-nexus-800 transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'text-nexus-accent'}`}
+                      >
+                          <Send size={18} />
+                      </button>
+                  </div>
+              </div>
+          </div>
 
+        </div>
       </div>
-    </div>
+    </ConfigurationProvider>
   );
 }
