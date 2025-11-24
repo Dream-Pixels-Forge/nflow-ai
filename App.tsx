@@ -38,7 +38,7 @@ import { TaskDashboard } from './components/TaskDashboard';
 import { SettingsModal } from './components/SettingsModal';
 import { IncomingTransmission } from './components/IncomingTransmission';
 import { ProjectManager } from './components/ProjectManager'; // Import ProjectManager
-import { ConfigurationProvider } from './services/config/configStore';
+import { ConfigurationProvider } from './src/services/config/configStore';
 
 // Icon Mapping to prevent undefined render errors
 const AGENT_ICONS: Record<string, React.ElementType> = {

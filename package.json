@@ -17,15 +17,15 @@
     "recharts": "^2.12.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
     "tsx": "^4.20.6",
-    "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
   },
   "description": "NexusFlow is a local-first, terminal-style interface that orchestrates a team of specialized AI agents to build software. It mimics a professional development environment with role-based agents (Architect, Coder, QA, Security), a virtual file system, and integrated telemetry.",
   "main": "index.js",
