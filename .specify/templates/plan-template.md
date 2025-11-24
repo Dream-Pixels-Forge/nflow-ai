@@ -31,7 +31,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+The following NexusFlow principles must be validated for this feature:
+
+1. **Multi-Agent Orchestration**: Verify feature supports specialized AI personas and maintains clear agent responsibilities
+2. **Local-First Design**: Confirm feature works offline with local AI providers as default
+3. **Terminal-Style Interface**: Ensure UI follows CLI patterns familiar to developers
+4. **Cyberpunk/Sci-Fi Aesthetics**: Validate visual design reinforces AI agent orchestration concept
+5. **Dual Backend Compatibility**: Ensure feature works with both Google Gemini and Ollama backends
 
 ## Project Structure
 
