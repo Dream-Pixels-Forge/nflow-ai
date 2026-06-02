@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Terminal as TerminalIcon 
+  Terminal as TerminalIcon,
+  PanelRightOpen,
+  PanelRightClose
 } from 'lucide-react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from './types';
 import { sendMessageToAgent } from './services/aiService';
@@ -17,6 +19,7 @@ import { MessageList } from './components/MessageList';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { InputArea } from './components/InputArea';
+import { RightPanel } from './components/RightPanel';
 import { useAgentChat } from './hooks/useAgentChat';
 import { useCommandParser } from './hooks/useCommandParser';
 
@@ -60,7 +63,8 @@ export default function App() {
   });
 
   const [showBootSequence, setShowBootSequence] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'telemetry' | 'tools'>('telemetry');
+  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools'>('telemetry');
+  const [showRightPanel, setShowRightPanel] = useState(true);
   
   // Orchestrator State
   const [transitionTarget, setTransitionTarget] = useState<AgentMode | null>(null);
@@ -195,15 +199,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeAgent]);
 
-  // Focus input on click
-  const handleContainerClick = () => {
-    if (!transitionTarget) {
-        // Focus the input
-        const input = document.querySelector('input[type="text"]') as HTMLInputElement;
-        if (input) input.focus();
-    }
-  };
-
   const handleUpdateTaskStatus = (taskId: string, status: Task['status']) => {
      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status } : t));
   };
@@ -254,14 +249,11 @@ export default function App() {
            />
         )}
 
-        {/* Left Sidebar: System Stats & Grid */}
+        {/* Left Sidebar: Agent Grid */}
         <Sidebar
           activeAgent={activeAgent}
           pendingSwitch={pendingSwitch}
           tasks={tasks}
-          sidebarTab={sidebarTab}
-          toolState={toolState}
-          onSetSidebarTab={setSidebarTab}
           onSwitchAgent={(targetAgent) => {
             setTransitionTarget(targetAgent);
             setTimeout(() => {
@@ -272,11 +264,10 @@ export default function App() {
           }}
           onDismissPendingSwitch={() => setPendingSwitch(null)}
           onShowTaskDashboard={() => setShowTaskDashboard(true)}
-          onSetToolState={setToolState}
         />
 
         {/* Main Terminal Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] z-10 relative" onClick={handleContainerClick}>
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] z-10 relative">
 
           {/* Header Bar */}
           <Header
@@ -309,6 +300,26 @@ export default function App() {
           />
 
         </div>
+
+        {/* Right Panel Toggle Button */}
+        <button
+          onClick={() => setShowRightPanel(!showRightPanel)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-nexus-800 hover:bg-nexus-700 border border-nexus-border rounded-l-md transition-colors text-gray-400 hover:text-nexus-accent"
+          title={showRightPanel ? 'Hide Panel' : 'Show Panel'}
+        >
+          {showRightPanel ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+        </button>
+
+        {/* Right Panel: Telemetry & Tools */}
+        <RightPanel
+          rightPanelTab={rightPanelTab}
+          toolState={toolState}
+          onSetRightPanelTab={setRightPanelTab}
+          onSetToolState={setToolState}
+          isOpen={showRightPanel}
+          onClose={() => setShowRightPanel(false)}
+        />
+
       </div>
     </ConfigurationProvider>
   );

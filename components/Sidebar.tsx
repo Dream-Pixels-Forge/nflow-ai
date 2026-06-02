@@ -1,38 +1,28 @@
 import React from 'react';
-import { AGENTS, AgentMode, Task, VirtualFile } from '../types';
+import { AGENTS, AgentMode, Task } from '../types';
 import { FolderOpen, ListTodo, Check, ArrowRightLeft } from 'lucide-react';
 import { AgentGrid } from './AgentGrid';
-import { SystemMonitor } from './SystemMonitor';
-import { ToolsPanel } from './ToolsPanel';
-import { ToolState } from '../types';
 
 interface SidebarProps {
   activeAgent: AgentMode;
   pendingSwitch: AgentMode | null;
   tasks: Task[];
-  sidebarTab: 'telemetry' | 'tools';
-  toolState: ToolState;
-  onSetSidebarTab: (tab: 'telemetry' | 'tools') => void;
   onSwitchAgent: (agent: AgentMode) => void;
   onDismissPendingSwitch: () => void;
   onShowTaskDashboard: () => void;
-  onSetToolState: React.Dispatch<React.SetStateAction<ToolState>>;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeAgent,
   pendingSwitch,
   tasks,
-  sidebarTab,
-  toolState,
-  onSetSidebarTab,
   onSwitchAgent,
   onDismissPendingSwitch,
-  onShowTaskDashboard,
-  onSetToolState
+  onShowTaskDashboard
 }) => {
   return (
-    <div className="w-80 bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl">
+    <div className="w-72 bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl">
+      {/* Header */}
       <div className={`p-4 border-b border-nexus-border flex items-center gap-3 transition-all duration-300 ${pendingSwitch ? 'bg-nexus-900' : 'bg-nexus-800/30'}`}>
         {pendingSwitch ? (
           <>
@@ -86,39 +76,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      {/* Agent Grid - Full Height */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <AgentGrid activeAgent={activeAgent} />
-      </div>
-
-      <div className="h-[400px] border-t border-nexus-border flex flex-col bg-nexus-900">
-         <div className="flex border-b border-nexus-border">
-            <button
-              onClick={() => onSetSidebarTab('telemetry')}
-              className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-                sidebarTab === 'telemetry'
-                  ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
-                  : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
-              }`}
-            >
-              Telemetry
-            </button>
-            <button
-              onClick={() => onSetSidebarTab('tools')}
-              className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-                sidebarTab === 'tools'
-                  ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
-                  : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
-              }`}
-            >
-              Tools
-            </button>
-         </div>
-         <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-            {sidebarTab === 'telemetry'
-              ? <SystemMonitor />
-              : <ToolsPanel toolState={toolState} setToolState={onSetToolState} />
-            }
-         </div>
       </div>
     </div>
   );

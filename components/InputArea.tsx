@@ -55,8 +55,11 @@ export const InputArea: React.FC<InputAreaProps> = ({
     }
   };
 
+  // Determine if input should be disabled
+  const isInputDisabled = !!transitionTarget || isHalted;
+
   return (
-    <div className="p-4 bg-nexus-900 border-t border-nexus-border z-50">
+    <div className="p-4 bg-nexus-900 border-t border-nexus-border relative z-10">
         {/* Emergency Panel */}
         {showEmergencyPanel && (
           <div className="mb-3 p-3 bg-red-900/20 border border-red-500/50 rounded-sm">
@@ -126,17 +129,22 @@ export const InputArea: React.FC<InputAreaProps> = ({
         )}
 
         {/* Main Input */}
-        <div className="flex items-center gap-2 bg-black border border-nexus-border p-3 rounded-sm focus-within:border-nexus-accent transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+        <div className={`flex items-center gap-2 bg-black border p-3 rounded-sm transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)] ${
+          isInputDisabled 
+            ? 'border-red-500/50 opacity-50' 
+            : 'border-nexus-border focus-within:border-nexus-accent'
+        }`}>
             <span className={`${AGENTS[activeAgent].color} font-bold text-lg`}>›</span>
             <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={`/${activeAgent.toLowerCase()}, /tasks or message...`}
+                placeholder={isHalted ? 'SYSTEM HALTED - RESUME TO CONTINUE' : `/${activeAgent.toLowerCase()}, /tasks or message...`}
                 className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-700"
                 autoComplete="off"
-                disabled={!!transitionTarget || isHalted}
+                disabled={isInputDisabled}
+                autoFocus
             />
             <div className="flex items-center gap-2">
                  <div className="hidden md:flex items-center gap-1 px-2 py-1 bg-nexus-800 rounded text-[10px] text-gray-500 border border-nexus-border">
@@ -160,8 +168,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
                 <button
                     onClick={onSendMessage}
-                    disabled={isProcessing || !!transitionTarget || isHalted}
-                    className={`p-2 rounded hover:bg-nexus-800 transition-colors ${isProcessing || isHalted ? 'opacity-50 cursor-not-allowed' : 'text-nexus-accent'}`}
+                    disabled={isProcessing || isInputDisabled}
+                    className={`p-2 rounded hover:bg-nexus-800 transition-colors ${isProcessing || isInputDisabled ? 'opacity-50 cursor-not-allowed' : 'text-nexus-accent'}`}
                 >
                     <Send size={18} />
                 </button>
