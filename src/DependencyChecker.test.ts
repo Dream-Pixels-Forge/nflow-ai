@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { checkDependencies, checkNodeVersion } from './src/utils/DependencyChecker';
-import { Dependency } from './src/models/Dependency';
+import { checkDependencies, checkNodeVersion } from './utils/DependencyChecker';
+import { Dependency } from './models/Dependency';
 
 // Mock process.version for Node.js version testing
 vi.mock('process', () => ({

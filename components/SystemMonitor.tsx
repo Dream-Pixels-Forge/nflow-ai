@@ -140,7 +140,7 @@ export const SystemMonitor: React.FC = () => {
                 {getStatusIcon(status as AgentStatus)}
               </span>
               <span className="text-gray-400">{status}:</span>
-              <span className="text-white font-mono">{count}</span>
+              <span className="text-white font-mono">{count as number}</span>
             </div>
           ))}
         </div>

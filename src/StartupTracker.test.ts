@@ -6,7 +6,7 @@ import {
   completeStartup, 
   reportStartupError,
   setStartupStatusCallback
-} from './src/utils/StartupTracker';
+} from './utils/StartupTracker';
 
 describe('StartupTracker', () => {
   beforeEach(() => {

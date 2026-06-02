@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { ConfigurationProvider, useConfig } from '../../../../src/services/config/configStore';
 import { LocalStorageService } from '../../../../src/services/config/localStorage';

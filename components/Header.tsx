@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Get current agent's phase
   const currentAgentState = agentStates.get(activeAgent);
-  const currentPhase = currentAgentState?.phase || 'P';
+  const currentPhase = (currentAgentState?.phase || 'P') as keyof typeof PHASE_CONFIGS;
   const phaseConfig = PHASE_CONFIGS[currentPhase];
 
   return (

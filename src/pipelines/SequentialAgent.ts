@@ -110,10 +110,20 @@ export class SequentialAgent {
         const agent = this.config.agents[i];
         execution.currentAgentIndex = i;
 
-        const result = {
+        const result: {
+          agentId: string;
+          agentName: string;
+          status: AgentStatus;
+          input: any;
+          output?: any;
+          error?: string;
+          duration?: number;
+          startedAt: string;
+          completedAt?: string;
+        } = {
           agentId: agent.id,
           agentName: agent.name,
-          status: 'running' as AgentStatus,
+          status: 'running',
           input: currentInput,
           startedAt: new Date().toISOString()
         };

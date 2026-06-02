@@ -38,7 +38,7 @@ export interface IdentityRule {
   rule: string;
   description: string;
   enforced: boolean;
-  severity: 'info' | 'warning' | 'critical';
+  severity: 'info' | 'low' | 'medium' | 'high' | 'warning' | 'critical';
 }
 
 export interface IdentityTemplate {

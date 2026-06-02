@@ -137,7 +137,8 @@ export function useProduction(): [ProductionState, ProductionActions] {
       setMetrics(metricsCollector.getSummary());
       setSessions(sessionService.getActiveSessions());
       setSessionStats(sessionService.getStats());
-      setArtifacts(Array.from(artifactService.getStats().byType.keys()).flatMap(type => artifactService.getArtifactsByType(type)).slice(0, 20));
+      const artifactTypes = Object.keys(artifactService.getStats().byType);
+      setArtifacts(artifactTypes.flatMap(type => artifactService.getArtifactsByType(type)).slice(0, 20));
       setArtifactStats(artifactService.getStats());
       setMemoryStats(memoryBank.getStats());
       setDeployments(deploymentManager.getDeployments());

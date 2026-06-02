@@ -1,4 +1,4 @@
-export { Dependency } from './Dependency';
-export { StartupStatus } from './StartupStatus';
-export { DependencyError } from './DependencyError';
-export { DependencyCheckResult } from './DependencyCheckResult';
+export type { Dependency } from './Dependency';
+export type { StartupStatus } from './StartupStatus';
+export type { DependencyError } from './DependencyError';
+export type { DependencyCheckResult } from './DependencyCheckResult';
