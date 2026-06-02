@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Volume2, VolumeX, MousePointer2, Zap, Gauge, Server, Cloud, Database, RefreshCw, AlertTriangle, CheckCircle2, Wifi } from 'lucide-react';
-import { AppSettings, SuggestionLevel, AIProvider } from '../types';
+import { Settings, X, Volume2, VolumeX, MousePointer2, Zap, Gauge, Server, Cloud, Database, RefreshCw, AlertTriangle, CheckCircle2, Wifi, Cpu, Globe, Terminal } from 'lucide-react';
+import { AppSettings, SuggestionLevel, AIProvider, PROVIDER_NAMES, PROVIDER_DESCRIPTIONS } from '../types';
 import { getOllamaModels } from '../services/ollamaService';
 
 interface SettingsModalProps {
@@ -18,6 +18,22 @@ const FALLBACK_MODELS = [
   'deepseek-coder',
   'phi3'
 ];
+
+const PROVIDER_ICONS: Record<AIProvider, React.ElementType> = {
+  gemini: Cloud,
+  ollama: Database,
+  openrouter: Globe,
+  nvidia: Cpu,
+  opencode: Terminal
+};
+
+const PROVIDER_COLORS: Record<AIProvider, string> = {
+  gemini: 'nexus-accent',
+  ollama: 'orange-500',
+  openrouter: 'blue-400',
+  nvidia: 'green-500',
+  opencode: 'purple-400'
+};
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate, onClose }) => {
   
@@ -76,6 +92,240 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
         aiProvider: provider
     });
   };
+
+  const renderProviderSettings = () => {
+    switch (settings.aiProvider) {
+      case 'ollama':
+        return renderOllamaSettings();
+      case 'openrouter':
+        return renderOpenRouterSettings();
+      case 'nvidia':
+        return renderNVIDIASettings();
+      case 'opencode':
+        return renderOpenCodeSettings();
+      case 'gemini':
+      default:
+        return renderGeminiSettings();
+    }
+  };
+
+  const renderGeminiSettings = () => (
+    <div className="p-4 rounded bg-nexus-800/30 border border-nexus-accent/30 space-y-4 animate-fade-in">
+      <div className="text-[10px] text-nexus-accent uppercase font-bold">Google Gemini Configuration</div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">API Key</label>
+        <input 
+          type="password"
+          value={settings.geminiApiKey || ''}
+          onChange={(e) => onUpdate({ ...settings, geminiApiKey: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-nexus-accent focus:outline-none font-mono"
+          placeholder="Enter your Gemini API key"
+        />
+      </div>
+      <div className="text-[9px] text-nexus-dim">
+        Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-nexus-accent hover:underline">Google AI Studio</a>
+      </div>
+    </div>
+  );
+
+  const renderOllamaSettings = () => (
+    <div className="p-4 rounded bg-nexus-800/30 border border-orange-500/30 space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center">
+          <label className="text-[10px] text-orange-400 uppercase font-bold">Connection URL</label>
+      </div>
+      <div className="flex gap-2">
+           <input 
+              type="text" 
+              value={settings.ollamaUrl}
+              onChange={(e) => onUpdate({ ...settings, ollamaUrl: e.target.value })}
+              className="flex-1 bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
+              placeholder="http://localhost:11434"
+          />
+          <button 
+              onClick={fetchModels} 
+              disabled={isFetchingModels}
+              className={`px-3 rounded border border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-[10px] font-bold tracking-wider flex items-center gap-2 transition-all ${isFetchingModels ? 'opacity-50' : ''}`}
+          >
+              {isFetchingModels ? (
+                  <RefreshCw size={12} className="animate-spin" />
+              ) : (
+                  <Wifi size={12} />
+              )}
+              TEST CONNECTION
+          </button>
+      </div>
+
+      {/* Connection Status Indicator */}
+      {connectionStatus === 'connected' && (
+          <div className="text-[10px] text-green-400 flex items-center gap-2 bg-green-900/10 p-2 rounded border border-green-900/30">
+              <CheckCircle2 size={12} />
+              <span>ONLINE: Successfully connected to Ollama.</span>
+          </div>
+      )}
+      
+      {/* Error Notice */}
+      {fetchError && connectionStatus === 'error' && (
+           <div className="text-[9px] bg-red-500/10 border border-red-500/30 p-2 rounded text-red-300 flex gap-2 items-start">
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+              <div>
+                  <div className="font-bold mb-1">CONNECTION FAILED</div>
+                  <p className="mb-2">Your browser blocked the request. You must allow CORS.</p>
+                  Run this command in your terminal and restart Ollama:
+                  <code className="block bg-black/30 p-1 mt-1 rounded text-orange-300 select-all font-mono">
+                     launchctl setenv OLLAMA_ORIGINS "*"
+                  </code>
+                  <span className="opacity-50 mt-1 block">(Windows: Set environment variable OLLAMA_ORIGINS to *)</span>
+              </div>
+           </div>
+      )}
+
+      {/* Model Selection - General */}
+      <div className="space-y-1">
+          <label className="text-[10px] text-orange-400 uppercase font-bold">General/Orchestrator Model</label>
+          <div className="text-[9px] text-nexus-dim mb-1">Used by: CHAT, PLAN, MONITOR</div>
+          <select 
+              value={settings.ollamaGeneralModel}
+              onChange={(e) => onUpdate({ ...settings, ollamaGeneralModel: e.target.value })}
+              className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
+          >
+              <option value="">-- Select Model --</option>
+              {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+      </div>
+
+       {/* Model Selection - Coding */}
+       <div className="space-y-1 border-t border-nexus-border/50 pt-2">
+          <label className="text-[10px] text-orange-400 uppercase font-bold">Specialist/Coding Model</label>
+          <div className="text-[9px] text-nexus-dim mb-1">Used by: CODER, ARCHITECT, TEST, SECURE, DEPLOY</div>
+          <select 
+              value={settings.ollamaCodingModel}
+              onChange={(e) => onUpdate({ ...settings, ollamaCodingModel: e.target.value })}
+              className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
+          >
+              <option value="">-- Same as General --</option>
+              {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+      </div>
+    </div>
+  );
+
+  const renderOpenRouterSettings = () => (
+    <div className="p-4 rounded bg-nexus-800/30 border border-blue-400/30 space-y-4 animate-fade-in">
+      <div className="text-[10px] text-blue-400 uppercase font-bold">OpenRouter Configuration</div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">API Key</label>
+        <input 
+          type="password"
+          value={settings.openrouterApiKey || ''}
+          onChange={(e) => onUpdate({ ...settings, openrouterApiKey: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-blue-400 focus:outline-none font-mono"
+          placeholder="sk-or-..."
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">Model</label>
+        <select 
+          value={settings.openrouterModel || 'anthropic/claude-3.5-sonnet'}
+          onChange={(e) => onUpdate({ ...settings, openrouterModel: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-blue-400 focus:outline-none font-mono"
+        >
+          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+          <option value="openai/gpt-4o">GPT-4o</option>
+          <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+          <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+          <option value="meta-llama/llama-3.1-405b-instruct">Llama 3.1 405B</option>
+          <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B</option>
+          <option value="mistralai/mixtral-8x22b-instruct">Mixtral 8x22B</option>
+          <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+        </select>
+      </div>
+      <div className="text-[9px] text-nexus-dim">
+        Access 100+ models via <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OpenRouter</a>
+      </div>
+    </div>
+  );
+
+  const renderNVIDIASettings = () => (
+    <div className="p-4 rounded bg-nexus-800/30 border border-green-500/30 space-y-4 animate-fade-in">
+      <div className="text-[10px] text-green-500 uppercase font-bold">NVIDIA NIM Configuration</div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">API Key</label>
+        <input 
+          type="password"
+          value={settings.nvidiaApiKey || ''}
+          onChange={(e) => onUpdate({ ...settings, nvidiaApiKey: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-green-500 focus:outline-none font-mono"
+          placeholder="nvapi-..."
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">Model</label>
+        <select 
+          value={settings.nvidiaModel || 'meta/llama-3.1-405b-instruct'}
+          onChange={(e) => onUpdate({ ...settings, nvidiaModel: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-green-500 focus:outline-none font-mono"
+        >
+          <option value="meta/llama-3.1-405b-instruct">Llama 3.1 405B</option>
+          <option value="meta/llama-3.1-70b-instruct">Llama 3.1 70B</option>
+          <option value="meta/llama-3.1-8b-instruct">Llama 3.1 8B</option>
+          <option value="mistralai/mixtral-8x22b-instruct-v0.1">Mixtral 8x22B</option>
+          <option value="google/gemma-2-27b-it">Gemma 2 27B</option>
+          <option value="nvidia/nemotron-4-340b-instruct">Nemotron 4 340B</option>
+          <option value="snowflake/arctic">Arctic</option>
+        </select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">Base URL</label>
+        <input 
+          type="text"
+          value={settings.nvidiaBaseUrl || 'https://integrate.api.nvidia.com/v1'}
+          onChange={(e) => onUpdate({ ...settings, nvidiaBaseUrl: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-green-500 focus:outline-none font-mono"
+          placeholder="https://integrate.api.nvidia.com/v1"
+        />
+      </div>
+      <div className="text-[9px] text-nexus-dim">
+        Get your API key from <a href="https://build.nvidia.com/" target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">NVIDIA Build</a>
+      </div>
+    </div>
+  );
+
+  const renderOpenCodeSettings = () => (
+    <div className="p-4 rounded bg-nexus-800/30 border border-purple-400/30 space-y-4 animate-fade-in">
+      <div className="text-[10px] text-purple-400 uppercase font-bold">OpenCode Configuration</div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">API Key</label>
+        <input 
+          type="password"
+          value={settings.opencodeApiKey || ''}
+          onChange={(e) => onUpdate({ ...settings, opencodeApiKey: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
+          placeholder="Enter your OpenCode API key"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">Model</label>
+        <select 
+          value={settings.opencodeModel || 'opencode-1'}
+          onChange={(e) => onUpdate({ ...settings, opencodeModel: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
+        >
+          <option value="opencode-1">OpenCode 1</option>
+        </select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] text-nexus-dim uppercase font-bold">Base URL</label>
+        <input 
+          type="text"
+          value={settings.opencodeBaseUrl || 'https://api.opencode.ai/v1'}
+          onChange={(e) => onUpdate({ ...settings, opencodeBaseUrl: e.target.value })}
+          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
+          placeholder="https://api.opencode.ai/v1"
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-8 animate-fade-in">
@@ -203,107 +453,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
                         <label className="text-xs font-bold font-mono uppercase">AI Inference Backend</label>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button
-                           onClick={() => handleProviderChange('gemini')}
-                           className={`p-3 rounded border flex flex-col items-center gap-2 transition-all ${settings.aiProvider === 'gemini' ? 'bg-nexus-accent/10 border-nexus-accent text-nexus-accent' : 'bg-nexus-800 border-nexus-border text-gray-500'}`}
-                        >
-                           <Cloud size={20} />
-                           <span className="text-xs font-bold">GOOGLE GEMINI</span>
-                           <span className="text-[9px] opacity-60">Cloud API</span>
-                        </button>
-                        <button
-                           onClick={() => handleProviderChange('ollama')}
-                           className={`p-3 rounded border flex flex-col items-center gap-2 transition-all ${settings.aiProvider === 'ollama' ? 'bg-orange-500/10 border-orange-500 text-orange-500' : 'bg-nexus-800 border-nexus-border text-gray-500'}`}
-                        >
-                           <Database size={20} />
-                           <span className="text-xs font-bold">OLLAMA LOCAL</span>
-                           <span className="text-[9px] opacity-60">Localhost API</span>
-                        </button>
+                        {(Object.keys(PROVIDER_NAMES) as AIProvider[]).map((provider) => {
+                           const Icon = PROVIDER_ICONS[provider];
+                           const color = PROVIDER_COLORS[provider];
+                           return (
+                             <button
+                                key={provider}
+                                onClick={() => handleProviderChange(provider)}
+                                className={`p-3 rounded border flex flex-col items-center gap-2 transition-all ${settings.aiProvider === provider ? `bg-${color}/10 border-${color} text-${color}` : 'bg-nexus-800 border-nexus-border text-gray-500'}`}
+                             >
+                                <Icon size={20} />
+                                <span className="text-xs font-bold">{PROVIDER_NAMES[provider].toUpperCase()}</span>
+                                <span className="text-[9px] opacity-60">{PROVIDER_DESCRIPTIONS[provider].split(' ').slice(0, 3).join(' ')}</span>
+                             </button>
+                           );
+                        })}
                     </div>
                  </div>
 
-                 {/* Ollama Specifics */}
-                 {settings.aiProvider === 'ollama' && (
-                    <div className="p-4 rounded bg-nexus-800/30 border border-orange-500/30 space-y-4 animate-fade-in">
-                        <div className="flex justify-between items-center">
-                            <label className="text-[10px] text-orange-400 uppercase font-bold">Connection URL</label>
-                            
-                        </div>
-                        <div className="flex gap-2">
-                             <input 
-                                type="text" 
-                                value={settings.ollamaUrl}
-                                onChange={(e) => onUpdate({ ...settings, ollamaUrl: e.target.value })}
-                                className="flex-1 bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
-                                placeholder="http://localhost:11434"
-                            />
-                            <button 
-                                onClick={fetchModels} 
-                                disabled={isFetchingModels}
-                                className={`px-3 rounded border border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-[10px] font-bold tracking-wider flex items-center gap-2 transition-all ${isFetchingModels ? 'opacity-50' : ''}`}
-                            >
-                                {isFetchingModels ? (
-                                    <RefreshCw size={12} className="animate-spin" />
-                                ) : (
-                                    <Wifi size={12} />
-                                )}
-                                TEST CONNECTION
-                            </button>
-                        </div>
-
-                        {/* Connection Status Indicator */}
-                        {connectionStatus === 'connected' && (
-                            <div className="text-[10px] text-green-400 flex items-center gap-2 bg-green-900/10 p-2 rounded border border-green-900/30">
-                                <CheckCircle2 size={12} />
-                                <span>ONLINE: Successfully connected to Ollama.</span>
-                            </div>
-                        )}
-                        
-                        {/* Error Notice */}
-                        {fetchError && connectionStatus === 'error' && (
-                             <div className="text-[9px] bg-red-500/10 border border-red-500/30 p-2 rounded text-red-300 flex gap-2 items-start">
-                                <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                                <div>
-                                    <div className="font-bold mb-1">CONNECTION FAILED</div>
-                                    <p className="mb-2">Your browser blocked the request. You must allow CORS.</p>
-                                    Run this command in your terminal and restart Ollama:
-                                    <code className="block bg-black/30 p-1 mt-1 rounded text-orange-300 select-all font-mono">
-                                       launchctl setenv OLLAMA_ORIGINS "*"
-                                    </code>
-                                    <span className="opacity-50 mt-1 block">(Windows: Set environment variable OLLAMA_ORIGINS to *)</span>
-                                </div>
-                             </div>
-                        )}
-
-                        {/* Model Selection - General */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-orange-400 uppercase font-bold">General/Orchestrator Model</label>
-                            <div className="text-[9px] text-nexus-dim mb-1">Used by: CHAT, PLAN, MONITOR</div>
-                            <select 
-                                value={settings.ollamaGeneralModel}
-                                onChange={(e) => onUpdate({ ...settings, ollamaGeneralModel: e.target.value })}
-                                className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
-                            >
-                                <option value="">-- Select Model --</option>
-                                {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                        </div>
-
-                         {/* Model Selection - Coding */}
-                         <div className="space-y-1 border-t border-nexus-border/50 pt-2">
-                            <label className="text-[10px] text-orange-400 uppercase font-bold">Specialist/Coding Model</label>
-                            <div className="text-[9px] text-nexus-dim mb-1">Used by: CODER, ARCHITECT, TEST, SECURE, DEPLOY</div>
-                            <select 
-                                value={settings.ollamaCodingModel}
-                                onChange={(e) => onUpdate({ ...settings, ollamaCodingModel: e.target.value })}
-                                className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-orange-500 focus:outline-none font-mono"
-                            >
-                                <option value="">-- Same as General --</option>
-                                {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                 )}
+                 {/* Provider Settings */}
+                 {renderProviderSettings()}
              </div>
           )}
 

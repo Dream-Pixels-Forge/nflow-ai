@@ -1,6 +1,9 @@
 
 import { sendMessageToGemini } from "./geminiService";
 import { sendMessageToOllama } from "./ollamaService";
+import { sendMessageToOpenRouter, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
+import { sendMessageToNVIDIA, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
+import { sendMessageToOpenCode, DEFAULT_OPENCODE_CONFIG } from "./openCodeService";
 import { AgentMode, Message, ToolState, Task, AppSettings } from "../types";
 
 const TECHNICAL_AGENTS = [
@@ -21,13 +24,13 @@ export const sendMessageToAgent = async (
   settings: AppSettings
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
-  if (settings.aiProvider === 'ollama') {
-     
-     // Determine which model to use
-     const isTechnical = TECHNICAL_AGENTS.includes(agent);
-     const targetModel = isTechnical ? settings.ollamaCodingModel : settings.ollamaGeneralModel;
+  switch (settings.aiProvider) {
+    case 'ollama': {
+      // Determine which model to use
+      const isTechnical = TECHNICAL_AGENTS.includes(agent);
+      const targetModel = isTechnical ? settings.ollamaCodingModel : settings.ollamaGeneralModel;
 
-     return sendMessageToOllama(
+      return sendMessageToOllama(
         prompt,
         history,
         agent,
@@ -36,11 +39,65 @@ export const sendMessageToAgent = async (
         currentTasks,
         settings.suggestionLevel,
         settings.ollamaUrl,
-        targetModel || settings.ollamaGeneralModel // Fallback to general if coding is empty
-     );
-  } else {
-     // Default to Gemini
-     return sendMessageToGemini(
+        targetModel || settings.ollamaGeneralModel
+      );
+    }
+
+    case 'openrouter': {
+      return sendMessageToOpenRouter(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.openrouterApiKey || '',
+          model: settings.openrouterModel || DEFAULT_OPENROUTER_CONFIG.model,
+          baseUrl: DEFAULT_OPENROUTER_CONFIG.baseUrl
+        }
+      );
+    }
+
+    case 'nvidia': {
+      return sendMessageToNVIDIA(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.nvidiaApiKey || '',
+          model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
+          baseUrl: settings.nvidiaBaseUrl || DEFAULT_NVIDIA_CONFIG.baseUrl
+        }
+      );
+    }
+
+    case 'opencode': {
+      return sendMessageToOpenCode(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.opencodeApiKey || '',
+          model: settings.opencodeModel || DEFAULT_OPENCODE_CONFIG.model,
+          baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_CONFIG.baseUrl
+        }
+      );
+    }
+
+    case 'gemini':
+    default: {
+      // Default to Gemini
+      return sendMessageToGemini(
         prompt,
         history,
         agent,
@@ -48,6 +105,7 @@ export const sendMessageToAgent = async (
         projectSummary,
         currentTasks,
         settings.suggestionLevel
-     );
+      );
+    }
   }
 };

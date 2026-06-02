@@ -45,7 +45,7 @@ export interface SystemMetrics {
 }
 
 export type SuggestionLevel = 'low' | 'medium' | 'high';
-export type AIProvider = 'gemini' | 'ollama';
+export type AIProvider = 'gemini' | 'ollama' | 'openrouter' | 'nvidia' | 'opencode';
 
 export interface AppSettings {
   suggestionLevel: SuggestionLevel;
@@ -54,9 +54,23 @@ export interface AppSettings {
   animations: boolean;
   // Backend Settings
   aiProvider: AIProvider;
+  // Gemini Settings
+  geminiApiKey?: string;
+  // Ollama Settings
   ollamaUrl: string;
-  ollamaGeneralModel: string; // For Chat, Plan, Monitor
-  ollamaCodingModel: string;  // For Coder, Architect, Test, Secure, Deploy
+  ollamaGeneralModel: string;
+  ollamaCodingModel: string;
+  // OpenRouter Settings
+  openrouterApiKey?: string;
+  openrouterModel?: string;
+  // NVIDIA Settings
+  nvidiaApiKey?: string;
+  nvidiaModel?: string;
+  nvidiaBaseUrl?: string;
+  // OpenCode Settings
+  opencodeApiKey?: string;
+  opencodeModel?: string;
+  opencodeBaseUrl?: string;
 }
 
 // New Tool Interfaces
@@ -90,4 +104,22 @@ export const AGENTS: Record<AgentMode, AgentConfig> = {
   [AgentMode.SECURE]: { id: AgentMode.SECURE, name: 'NEXUS-SEC', description: 'Security & Vulnerability Analysis', color: 'text-red-500', icon: 'ShieldAlert' },
   [AgentMode.DEPLOY]: { id: AgentMode.DEPLOY, name: 'NEXUS-OPS', description: 'CI/CD & Deployment', color: 'text-orange-400', icon: 'Rocket' },
   [AgentMode.MONITOR]: { id: AgentMode.MONITOR, name: 'NEXUS-MON', description: 'Performance & Health', color: 'text-emerald-500', icon: 'Activity' },
+};
+
+// Provider Display Names
+export const PROVIDER_NAMES: Record<AIProvider, string> = {
+  gemini: 'Google Gemini',
+  ollama: 'Ollama (Local)',
+  openrouter: 'OpenRouter',
+  nvidia: 'NVIDIA NIM',
+  opencode: 'OpenCode'
+};
+
+// Provider Descriptions
+export const PROVIDER_DESCRIPTIONS: Record<AIProvider, string> = {
+  gemini: 'Google Cloud AI with grounding and search capabilities',
+  ollama: 'Local inference with open-source models',
+  openrouter: 'Access to 100+ models via unified API',
+  nvidia: 'NVIDIA inference microservices for enterprise AI',
+  opencode: 'Open-source AI coding assistant'
 };
