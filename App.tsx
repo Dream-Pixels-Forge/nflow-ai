@@ -1,10 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Terminal as TerminalIcon,
-  PanelRightOpen,
-  PanelRightClose
-} from 'lucide-react';
+import { Terminal as TerminalIcon } from 'lucide-react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from './types';
 import { sendMessageToAgent } from './services/aiService';
 import { initializeStartupTracking, completeStartup, reportStartupError, setStartupStatusCallback } from './src/utils/StartupTracker';
@@ -301,15 +297,6 @@ export default function App() {
 
         </div>
 
-        {/* Right Panel Toggle Button */}
-        <button
-          onClick={() => setShowRightPanel(!showRightPanel)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-nexus-800 hover:bg-nexus-700 border border-nexus-border rounded-l-md transition-colors text-gray-400 hover:text-nexus-accent"
-          title={showRightPanel ? 'Hide Panel' : 'Show Panel'}
-        >
-          {showRightPanel ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-        </button>
-
         {/* Right Panel: Telemetry & Tools */}
         <RightPanel
           rightPanelTab={rightPanelTab}
@@ -317,7 +304,7 @@ export default function App() {
           onSetRightPanelTab={setRightPanelTab}
           onSetToolState={setToolState}
           isOpen={showRightPanel}
-          onClose={() => setShowRightPanel(false)}
+          onToggle={() => setShowRightPanel(!showRightPanel)}
         />
 
       </div>
