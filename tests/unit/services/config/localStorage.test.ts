@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LocalStorageService } from '../../../../src/services/config/localStorage';
 import { ConfigurationProfile, NewProfileRequest } from '../../../../src/types/config';
 
@@ -28,11 +29,11 @@ Object.defineProperty(window, 'localStorage', {
 describe('LocalStorageService', () => {
   beforeEach(() => {
     mockLocalStorage.clear();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('saveCurrentProfile and loadCurrentProfile', () => {
@@ -247,14 +248,14 @@ describe('LocalStorageService', () => {
       LocalStorageService.autoSaveCurrentProfile({ ...profile, settings: { theme: 'auto' } });
 
       // Advance timers by less than 5 seconds - no save should occur yet
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
       
       // The profile should still be the original one
       const currentProfile = LocalStorageService.loadCurrentProfile();
       expect(currentProfile).toBeNull();
 
       // Advance timers to complete the debounce period
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
       
       // Now the last value should be saved
       const updatedProfile = LocalStorageService.loadCurrentProfile();

@@ -12,7 +12,7 @@ export const sendMessageToGemini = async (
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium'
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
     throw new Error("API Key not found");
   }

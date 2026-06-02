@@ -7,7 +7,9 @@
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check-deps": "tsx scripts/check-dependencies.ts"
+    "check-deps": "tsx scripts/check-dependencies.ts",
+    "test": "vitest",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@google/genai": "^0.2.0",
@@ -17,6 +19,8 @@
     "recharts": "^2.12.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
@@ -26,7 +30,8 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
-    "vite-plugin-pwa": "^1.1.0"
+    "vite-plugin-pwa": "^1.1.0",
+    "vitest": "^3.1.1"
   },
   "description": "NexusFlow is a local-first, terminal-style interface that orchestrates a team of specialized AI agents to build software. It mimics a professional development environment with role-based agents (Architect, Coder, QA, Security), a virtual file system, and integrated telemetry.",
   "main": "index.js",
