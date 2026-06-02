@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal as TerminalIcon } from 'lucide-react';
+import { Terminal as TerminalIcon, PanelRightOpen } from 'lucide-react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from './types';
 import { sendMessageToAgent } from './services/aiService';
 import { initializeStartupTracking, completeStartup, reportStartupError, setStartupStatusCallback } from './src/utils/StartupTracker';
@@ -297,6 +297,17 @@ export default function App() {
 
         </div>
 
+        {/* Right Panel Toggle (when closed) */}
+        {!showRightPanel && (
+          <button
+            onClick={() => setShowRightPanel(true)}
+            className="absolute right-0 top-2 z-20 p-1.5 bg-nexus-800 hover:bg-nexus-700 border border-r-0 border-nexus-border rounded-l-md transition-colors text-gray-400 hover:text-nexus-accent"
+            title="Expand Panel"
+          >
+            <PanelRightOpen size={14} />
+          </button>
+        )}
+
         {/* Right Panel: Telemetry & Tools */}
         <RightPanel
           rightPanelTab={rightPanelTab}
@@ -304,7 +315,7 @@ export default function App() {
           onSetRightPanelTab={setRightPanelTab}
           onSetToolState={setToolState}
           isOpen={showRightPanel}
-          onToggle={() => setShowRightPanel(!showRightPanel)}
+          onToggle={() => setShowRightPanel(false)}
         />
 
       </div>
