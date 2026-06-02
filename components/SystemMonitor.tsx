@@ -1,7 +1,22 @@
 
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Cpu, HardDrive, Wifi, Zap, Monitor } from 'lucide-react';
+import { 
+  Activity, 
+  Cpu, 
+  HardDrive, 
+  Wifi, 
+  Zap, 
+  Monitor,
+  Heart,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Shield,
+  GitBranch
+} from 'lucide-react';
+import { useAgenticSystems } from '../hooks/useAgenticSystems';
+import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
 
 const generateData = () => {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -12,10 +27,48 @@ const generateData = () => {
   }));
 };
 
+const getStatusColor = (status: AgentStatus): string => {
+  switch (status) {
+    case 'HEALTHY': return 'text-green-500';
+    case 'DRIFTING': return 'text-yellow-500';
+    case 'STALLED': return 'text-orange-500';
+    case 'CRASHED': return 'text-red-500';
+    case 'IDLE': return 'text-gray-500';
+    default: return 'text-gray-500';
+  }
+};
+
+const getStatusIcon = (status: AgentStatus) => {
+  switch (status) {
+    case 'HEALTHY': return <CheckCircle size={12} />;
+    case 'DRIFTING': return <AlertTriangle size={12} />;
+    case 'STALLED': return <AlertTriangle size={12} />;
+    case 'CRASHED': return <XCircle size={12} />;
+    case 'IDLE': return <Activity size={12} />;
+    default: return <Activity size={12} />;
+  }
+};
+
+const getPhaseColor = (phase: AgentPhase): string => {
+  const colors: Record<AgentPhase, string> = {
+    P: 'text-purple-500',
+    R: 'text-blue-500',
+    I: 'text-green-500',
+    D: 'text-orange-500',
+    E: 'text-cyan-500',
+    S: 'text-red-500'
+  };
+  return colors[phase] || 'text-gray-500';
+};
+
 export const SystemMonitor: React.FC = () => {
   const [data, setData] = useState(generateData());
-  const [vram, setVram] = useState(12.4); // Initial VRAM in GB
+  const [vram, setVram] = useState(12.4);
   const [osName, setOsName] = useState('UNKNOWN');
+  
+  // Agentic systems
+  const [agenticState] = useAgenticSystems();
+  const { agentStates, isHalted, driftEvents, emergencyEvents } = agenticState;
 
   useEffect(() => {
     // Detect OS
@@ -31,14 +84,13 @@ export const SystemMonitor: React.FC = () => {
       setData(prev => {
         const next = [...prev.slice(1), {
           time: prev[prev.length - 1].time + 1,
-          cpu: 20 + Math.random() * 40, // Simulate variable load
+          cpu: 20 + Math.random() * 40,
           mem: 40 + Math.random() * 10,
           net: Math.random() * 80
         }];
         return next;
       });
 
-      // Simulate VRAM usage fluctuation
       setVram(prev => {
         const change = (Math.random() - 0.5) * 1.5;
         let next = prev + change;
@@ -51,12 +103,77 @@ export const SystemMonitor: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Get agent status counts
+  const agentStatusCounts = Array.from(agentStates.values()).reduce((acc, agent) => {
+    acc[agent.status] = (acc[agent.status] || 0) + 1;
+    return acc;
+  }, {} as Record<AgentStatus, number>);
+
   return (
     <div className="flex flex-col gap-4 p-4 bg-nexus-800/50 border-l border-nexus-border min-h-full">
       <h3 className="text-nexus-accent font-mono text-sm uppercase tracking-wider flex items-center gap-2">
         <Activity className="w-4 h-4" /> System Telemetry
       </h3>
 
+      {/* Agentic System Status */}
+      <div className="bg-nexus-900 border border-nexus-border rounded-sm p-3">
+        <div className="flex items-center gap-2 text-nexus-dim mb-2">
+          <Shield size={14} />
+          <span className="text-[10px] font-mono uppercase">Agentic System</span>
+        </div>
+        
+        {/* System Halt Status */}
+        {isHalted && (
+          <div className="bg-red-900/30 border border-red-500/50 rounded-sm p-2 mb-2">
+            <div className="flex items-center gap-2 text-red-500 text-xs font-mono">
+              <XCircle size={12} />
+              <span>SYSTEM HALTED - EMERGENCY STOP ACTIVE</span>
+            </div>
+          </div>
+        )}
+
+        {/* Agent Status Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          {Object.entries(agentStatusCounts).map(([status, count]) => (
+            <div key={status} className="flex items-center gap-2 text-xs">
+              <span className={getStatusColor(status as AgentStatus)}>
+                {getStatusIcon(status as AgentStatus)}
+              </span>
+              <span className="text-gray-400">{status}:</span>
+              <span className="text-white font-mono">{count}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Drift Events */}
+        {driftEvents.length > 0 && (
+          <div className="border-t border-nexus-border pt-2 mt-2">
+            <div className="flex items-center gap-2 text-yellow-500 text-xs mb-1">
+              <AlertTriangle size={12} />
+              <span className="font-mono">DRIFT EVENTS: {driftEvents.length}</span>
+            </div>
+            <div className="text-[10px] text-gray-500">
+              {driftEvents.slice(-2).map((event, i) => (
+                <div key={i} className="truncate">
+                  {event.type}: {event.description}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Emergency Events */}
+        {emergencyEvents.length > 0 && (
+          <div className="border-t border-nexus-border pt-2 mt-2">
+            <div className="flex items-center gap-2 text-red-500 text-xs mb-1">
+              <XCircle size={12} />
+              <span className="font-mono">EMERGENCIES: {emergencyEvents.length}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CPU Chart */}
       <div className="h-40 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative overflow-hidden shrink-0">
          <div className="absolute top-2 right-2 text-xs font-mono text-green-500 opacity-50">CPU_LOAD_AVG</div>
         <ResponsiveContainer width="100%" height="100%">
@@ -67,6 +184,7 @@ export const SystemMonitor: React.FC = () => {
         </ResponsiveContainer>
       </div>
 
+      {/* Memory Chart */}
       <div className="h-40 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative shrink-0">
          <div className="absolute top-2 right-2 text-xs font-mono text-purple-500 opacity-50">MEM_ALLOC</div>
         <ResponsiveContainer width="100%" height="100%">
@@ -77,6 +195,7 @@ export const SystemMonitor: React.FC = () => {
         </ResponsiveContainer>
       </div>
 
+      {/* System Stats Grid */}
       <div className="grid grid-cols-2 gap-2 shrink-0">
         <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm col-span-2">
             <div className="flex items-center justify-between text-nexus-dim mb-1">

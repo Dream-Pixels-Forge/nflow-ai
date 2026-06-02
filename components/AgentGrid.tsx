@@ -8,8 +8,13 @@ import {
   FlaskConical, 
   ShieldAlert, 
   Rocket, 
-  Activity 
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  XCircle
 } from 'lucide-react';
+import { useAgenticSystems } from '../hooks/useAgenticSystems';
+import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
 
 interface AgentGridProps {
   activeAgent: AgentMode;
@@ -26,13 +31,69 @@ const AGENT_ICONS: Record<string, React.ElementType> = {
   'Activity': Activity
 };
 
+const getStatusColor = (status: AgentStatus): string => {
+  switch (status) {
+    case 'HEALTHY': return 'text-green-500';
+    case 'DRIFTING': return 'text-yellow-500';
+    case 'STALLED': return 'text-orange-500';
+    case 'CRASHED': return 'text-red-500';
+    case 'IDLE': return 'text-gray-500';
+    default: return 'text-gray-500';
+  }
+};
+
+const getStatusIcon = (status: AgentStatus) => {
+  switch (status) {
+    case 'HEALTHY': return <CheckCircle size={10} />;
+    case 'DRIFTING': return <AlertTriangle size={10} />;
+    case 'STALLED': return <AlertTriangle size={10} />;
+    case 'CRASHED': return <XCircle size={10} />;
+    case 'IDLE': return <Activity size={10} />;
+    default: return <Activity size={10} />;
+  }
+};
+
+const getPhaseColor = (phase: AgentPhase): string => {
+  const colors: Record<AgentPhase, string> = {
+    P: 'bg-purple-900/50 text-purple-400',
+    R: 'bg-blue-900/50 text-blue-400',
+    I: 'bg-green-900/50 text-green-400',
+    D: 'bg-orange-900/50 text-orange-400',
+    E: 'bg-cyan-900/50 text-cyan-400',
+    S: 'bg-red-900/50 text-red-400'
+  };
+  return colors[phase] || 'bg-gray-900/50 text-gray-400';
+};
+
+// Map AgentMode to agent ID for agentic system lookup
+const AGENT_MODE_TO_ID: Record<AgentMode, string> = {
+  [AgentMode.CHAT]: 'CHAT',
+  [AgentMode.PLAN]: 'PLAN',
+  [AgentMode.ARCHITECT]: 'ARCHITECT',
+  [AgentMode.CODER]: 'CODE',
+  [AgentMode.TEST]: 'TEST',
+  [AgentMode.SECURE]: 'SECURE',
+  [AgentMode.DEPLOY]: 'DEPLOY',
+  [AgentMode.MONITOR]: 'MONITOR'
+};
+
 export const AgentGrid: React.FC<AgentGridProps> = ({ activeAgent }) => {
+  // Agentic systems
+  const [agenticState] = useAgenticSystems();
+  const { agentStates } = agenticState;
+
   return (
     <div className="grid grid-cols-2 gap-3 p-4">
       {Object.values(AGENTS).map((agent) => {
         // Safe check for icon existence to prevent runtime errors
         const IconComponent = AGENT_ICONS[agent.icon] || MessageSquare;
         const isActive = activeAgent === agent.id;
+        
+        // Get agent health from agentic system
+        const agentId = AGENT_MODE_TO_ID[agent.id as AgentMode];
+        const agentHealth = agentStates.get(agentId);
+        const status = agentHealth?.status || 'IDLE';
+        const phase = agentHealth?.phase || 'P';
 
         return (
           <div
@@ -56,13 +117,23 @@ export const AgentGrid: React.FC<AgentGridProps> = ({ activeAgent }) => {
               <div className={`${isActive ? agent.color : 'text-gray-500'}`}>
                 <IconComponent size={20} />
               </div>
-              <div>
-                <h4 className={`font-mono text-xs font-bold ${isActive ? 'text-white' : 'text-gray-400'}`}>
-                  {agent.name}
-                </h4>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className={`font-mono text-xs font-bold ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                    {agent.name}
+                  </h4>
+                  {/* Status Indicator */}
+                  <span className={`flex items-center gap-1 text-[8px] font-mono ${getStatusColor(status)}`}>
+                    {getStatusIcon(status)}
+                  </span>
+                </div>
                 <p className="text-[10px] text-gray-500 leading-tight mt-1">
                   {agent.id} MODULE
                 </p>
+                {/* Phase Badge */}
+                <div className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[8px] font-mono ${getPhaseColor(phase)}`}>
+                  <span>PHASE: {phase}</span>
+                </div>
               </div>
             </div>
           </div>
