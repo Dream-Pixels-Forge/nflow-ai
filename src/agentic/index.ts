@@ -2,11 +2,55 @@
  * NexusFlow Agentic Systems Index
  * 
  * Complete agentic infrastructure based on Obsidian vault knowledge:
+ * - Agent OS (7-Layer Personal Agent System)
  * - A2A Protocol (Agent-to-Agent Communication)
  * - MCP Integration (Model Context Protocol)
  * - Persistent Memory System
  * - Core Agentic Systems (Orchestrator, EmergencyStop, Drift, Gates, Context)
  */
+
+// Agent OS (7-Layer Personal Agent System)
+export {
+  IdentityManager,
+  identityManager
+} from '../agent-os/IdentitySystem';
+export type {
+  UserIdentity,
+  IdentityRule,
+  IdentityTemplate
+} from '../agent-os/IdentitySystem';
+
+export {
+  ContextPortfolioManager,
+  contextPortfolioManager
+} from '../agent-os/ContextPortfolio';
+export type {
+  ContextCategory,
+  ContextEntry,
+  ContextTemplate
+} from '../agent-os/ContextPortfolio';
+
+export {
+  SkillsLibrary,
+  skillsLibrary
+} from '../agent-os/SkillsLibrary';
+export type {
+  SkillCategory,
+  SkillParameter,
+  SkillStep,
+  Skill,
+  SkillExecution
+} from '../agent-os/SkillsLibrary';
+
+export {
+  AgentOS,
+  agentOS
+} from '../agent-os/AgentOS';
+export type {
+  AgentOSConfig,
+  AgentOSState,
+  VerificationResult
+} from '../agent-os/AgentOS';
 
 // Core Agentic Systems
 export {
