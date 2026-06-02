@@ -1,6 +1,28 @@
 import React, { useState, useRef } from 'react';
-import { Database, Globe, FileText, Server, Workflow, ChevronDown, ChevronRight, Power, Upload, Plus, Trash2, X, Link } from 'lucide-react';
+import { 
+  Database, 
+  Globe, 
+  FileText, 
+  Server, 
+  Workflow, 
+  ChevronDown, 
+  ChevronRight, 
+  Power, 
+  Upload, 
+  Plus, 
+  Trash2, 
+  X, 
+  Link,
+  Users,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Brain
+} from 'lucide-react';
 import { ToolState } from '../types';
+import { useMCP } from '../hooks/useMCP';
+import { useA2A } from '../hooks/useA2A';
+import { useMemory } from '../hooks/useMemory';
 
 interface ToolsPanelProps {
   toolState: ToolState;
@@ -10,6 +32,11 @@ interface ToolsPanelProps {
 export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // A2A, MCP, Memory hooks
+  const [mcpState, mcpActions] = useMCP();
+  const [a2aState, a2aActions] = useA2A();
+  const [memoryState, memoryActions] = useMemory();
 
   const toggleExpand = (id: string) => {
     setExpanded(expanded === id ? null : id);
@@ -55,6 +82,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState 
       name: 'MCP BRIDGE', 
       icon: Server, 
       description: 'Model Context Protocol',
+      badge: mcpState.stats.connectedServers > 0 ? `${mcpState.stats.connectedServers} connected` : null,
       renderDetails: () => (
         <div className="mt-3 space-y-2">
            <div className="flex items-center gap-2">
@@ -67,6 +95,44 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState 
               />
               <span className="text-[10px] text-nexus-dim">LOCALHOST</span>
            </div>
+           
+           {/* MCP Servers List */}
+           {mcpState.servers.length > 0 && (
+             <div className="mt-2">
+               <div className="text-[10px] text-nexus-dim uppercase mb-1">Registered Servers</div>
+               <div className="max-h-24 overflow-y-auto custom-scrollbar border border-nexus-dim/20 p-2 bg-nexus-900/50">
+                 {mcpState.servers.map((server, i) => (
+                   <div key={i} className="flex items-center justify-between text-[9px] border-b border-nexus-dim/10 pb-1 mb-1">
+                     <div className="flex items-center gap-1">
+                       <span className={server.status === 'connected' ? 'text-green-500' : 'text-gray-500'}>
+                         <Server size={8} />
+                       </span>
+                       <span className="text-gray-400">{server.name}</span>
+                     </div>
+                     <span className={server.status === 'connected' ? 'text-green-500' : 'text-red-500'}>
+                       {server.status}
+                     </span>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
+
+           {/* MCP Tools */}
+           {mcpState.allTools.length > 0 && (
+             <div className="mt-2">
+               <div className="text-[10px] text-nexus-dim uppercase mb-1">Available Tools ({mcpState.allTools.length})</div>
+               <div className="max-h-24 overflow-y-auto custom-scrollbar border border-nexus-dim/20 p-2 bg-nexus-900/50">
+                 {mcpState.allTools.slice(0, 5).map((item, i) => (
+                   <div key={i} className="text-[9px] text-gray-400 border-b border-nexus-dim/10 pb-1 mb-1">
+                     <span className="text-nexus-accent">{item.tool.name}</span>
+                     <span className="text-gray-500 ml-1">({item.server})</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
+
            <div className="text-[10px] text-gray-500">
               Enables generic connection to local MCP servers for tool execution.
            </div>
@@ -191,7 +257,14 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState 
                    <tool.icon size={16} />
                  </div>
                  <div>
-                    <div className="text-xs font-bold font-mono text-gray-200">{tool.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-bold font-mono text-gray-200">{tool.name}</div>
+                      {tool.badge && (
+                        <span className="text-[8px] px-1.5 py-0.5 bg-nexus-accent/20 text-nexus-accent rounded">
+                          {tool.badge}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[9px] text-gray-500 font-mono">{tool.description}</div>
                  </div>
               </div>
@@ -207,12 +280,82 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState 
             </div>
 
             {/* Expansion Panel */}
-            <div className={`transition-all duration-300 ease-in-out px-3 bg-black/20 ${isExpanded ? 'max-h-48 py-3 border-t border-nexus-border' : 'max-h-0 py-0'}`}>
+            <div className={`transition-all duration-300 ease-in-out px-3 bg-black/20 ${isExpanded ? 'max-h-64 py-3 border-t border-nexus-border overflow-y-auto' : 'max-h-0 py-0'}`}>
                {tool.renderDetails()}
             </div>
           </div>
         );
       })}
+
+      {/* A2A Protocol Section */}
+      <div className="bg-nexus-900 border border-nexus-border p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Users size={14} className="text-nexus-accent" />
+          <span className="text-xs font-bold font-mono text-gray-200">A2A PROTOCOL</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="bg-nexus-800/50 p-2 rounded border border-nexus-border">
+            <div className="text-[9px] text-nexus-dim uppercase">Agents</div>
+            <div className="text-sm font-mono text-nexus-accent">{a2aState.stats.agents}</div>
+          </div>
+          <div className="bg-nexus-800/50 p-2 rounded border border-nexus-border">
+            <div className="text-[9px] text-nexus-dim uppercase">Tasks</div>
+            <div className="text-sm font-mono text-nexus-accent">{a2aState.stats.tasks}</div>
+          </div>
+        </div>
+
+        {/* Active Tasks */}
+        {a2aState.activeTasks.length > 0 && (
+          <div className="mt-2">
+            <div className="text-[9px] text-nexus-dim uppercase mb-1">Active Tasks</div>
+            <div className="max-h-20 overflow-y-auto custom-scrollbar border border-nexus-dim/20 p-1 bg-nexus-900/50">
+              {a2aState.activeTasks.slice(0, 3).map((task, i) => (
+                <div key={i} className="flex items-center justify-between text-[8px] border-b border-nexus-dim/10 pb-1 mb-1">
+                  <div className="flex items-center gap-1">
+                    <Clock size={8} className="text-yellow-500" />
+                    <span className="text-gray-400">{task.id.slice(0, 15)}...</span>
+                  </div>
+                  <span className="text-yellow-500">{task.state}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Memory Section */}
+      <div className="bg-nexus-900 border border-nexus-border p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Brain size={14} className="text-nexus-accent" />
+          <span className="text-xs font-bold font-mono text-gray-200">PERSISTENT MEMORY</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="bg-nexus-800/50 p-2 rounded border border-nexus-border">
+            <div className="text-[9px] text-nexus-dim uppercase">Entries</div>
+            <div className="text-sm font-mono text-nexus-accent">{memoryState.stats.totalEntries}</div>
+          </div>
+          <div className="bg-nexus-800/50 p-2 rounded border border-nexus-border">
+            <div className="text-[9px] text-nexus-dim uppercase">Accesses</div>
+            <div className="text-sm font-mono text-nexus-accent">{memoryState.stats.totalAccessCount}</div>
+          </div>
+        </div>
+
+        {/* Recent Memories */}
+        {memoryState.recentMemories.length > 0 && (
+          <div className="mt-2">
+            <div className="text-[9px] text-nexus-dim uppercase mb-1">Recent Memories</div>
+            <div className="max-h-20 overflow-y-auto custom-scrollbar border border-nexus-dim/20 p-1 bg-nexus-900/50">
+              {memoryState.recentMemories.slice(0, 3).map((mem, i) => (
+                <div key={i} className="text-[8px] text-gray-400 border-b border-nexus-dim/10 pb-1 mb-1 truncate">
+                  <span className="text-nexus-accent">[{mem.type}]</span> {mem.content.substring(0, 30)}...
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       
       <div className="mt-auto pt-4">
         <div className="p-2 rounded border border-nexus-dim/20 bg-nexus-900/50">
