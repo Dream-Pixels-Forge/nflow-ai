@@ -281,7 +281,8 @@ export default function App() {
           />
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative">
+            <div className="max-w-[1000px] mx-auto space-y-6">
             <MessageList
               messages={currentMessages}
               activeAgent={activeAgent}
@@ -289,6 +290,7 @@ export default function App() {
               aiProvider={settings.aiProvider}
             />
             <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input Area */}

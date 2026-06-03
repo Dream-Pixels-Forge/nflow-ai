@@ -75,7 +75,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     {isUser ? <User size={16} /> : <AgentIcon size={16} />}
                 </div>
 
-                <div className={`max-w-[80%] space-y-1`}>
+                <div className={`max-w-[1000px] space-y-1`}>
                     <div className={`flex items-center gap-2 text-[10px] uppercase ${isUser ? 'justify-end text-nexus-dim' : AGENTS[msg.agent].color}`}>
                         {isUser ? 'YOU' : msg.agent} <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString()}</span>
                     </div>
