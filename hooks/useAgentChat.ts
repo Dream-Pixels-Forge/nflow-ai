@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
-import { memoryManager, agentOrchestrator } from '../src/agentic';
+import { memoryManager, agentOrchestrator, contextManager, taskManager } from '../src/agentic';
 import { loadMessages, saveMessage, loadSettings, saveSettings } from '../src/persistence';
 
 interface UseAgentChatProps {
@@ -242,6 +242,10 @@ ${taskList || 'No tasks defined'}`;
         resourceUsage: { tokens: 0, latencyMs: 0 }
       });
 
+      // Create context session for this conversation
+      const session = contextManager.createSession(activeAgent);
+      contextManager.addMessage(session.id, { role: 'user', content: currentInput });
+
       // Use streaming AI Service
       const stream = sendMessageToAgentStream(
         currentInput, 
@@ -279,6 +283,13 @@ ${taskList || 'No tasks defined'}`;
             ...prev,
             [activeAgent]: [...prev[activeAgent].filter(m => m.id !== streamingMsgId), finalMsg]
           }));
+
+          // Add assistant message to context session
+          const sessions = contextManager.getAgentSessions(activeAgent);
+          if (sessions.length > 0) {
+            const latestSession = sessions[sessions.length - 1];
+            contextManager.addMessage(latestSession.id, { role: 'assistant', content: streamedContent });
+          }
 
           // Execute tool calls if present
           if (pendingToolCalls.length > 0) {
@@ -348,9 +359,26 @@ ${taskList || 'No tasks defined'}`;
             }
           }
 
-          // Handle Orchestrator Suggestion
+          // Handle Orchestrator Suggestion with A2A Task
           if (chunk.suggestedAgent && chunk.suggestedAgent !== activeAgent) {
             setPendingSwitch(chunk.suggestedAgent);
+            
+            // Create A2A Task for context handoff
+            taskManager.createTask({
+              agentId: chunk.suggestedAgent,
+              priority: 'medium',
+              input: [{
+                role: 'user',
+                content: currentInput,
+                parts: [{ type: 'text', data: currentInput }],
+                timestamp: new Date().toISOString()
+              }],
+              metadata: {
+                sourceAgent: activeAgent,
+                handoffReason: 'orchestrator-suggestion',
+                contextSummary: streamedContent.slice(0, 500)
+              }
+            });
           }
         } else {
           // Accumulate streamed text

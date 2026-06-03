@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
+import { taskManager } from '../src/a2a/TaskManager';
 
 const generateData = () => {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -70,6 +71,9 @@ export const SystemMonitor: React.FC = () => {
   const [agenticState] = useAgenticSystems();
   const { agentStates, isHalted, driftEvents, emergencyEvents } = agenticState;
 
+  // A2A task stats
+  const [a2aStats, setA2aStats] = useState(taskManager.getStats());
+
   useEffect(() => {
     // Detect OS
     const platform = navigator.platform.toLowerCase();
@@ -98,6 +102,9 @@ export const SystemMonitor: React.FC = () => {
         if (next > 23.5) next = 23.5;
         return next;
       });
+
+      // Refresh A2A stats
+      setA2aStats(taskManager.getStats());
 
     }, 1000);
     return () => clearInterval(interval);
@@ -168,6 +175,21 @@ export const SystemMonitor: React.FC = () => {
             <div className="flex items-center gap-2 text-red-500 text-xs mb-1">
               <XCircle size={12} />
               <span className="font-mono">EMERGENCIES: {emergencyEvents.length}</span>
+            </div>
+          </div>
+        )}
+
+        {/* A2A Task Stats */}
+        {a2aStats.total > 0 && (
+          <div className="border-t border-nexus-border pt-2 mt-2">
+            <div className="flex items-center gap-2 text-cyan-500 text-xs mb-1">
+              <GitBranch size={12} />
+              <span className="font-mono">A2A TASKS: {a2aStats.total}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 text-[10px]">
+              <span className="text-green-400">Active: {a2aStats.byState.working + a2aStats.byState.submitted}</span>
+              <span className="text-blue-400">Done: {a2aStats.byState.completed}</span>
+              <span className="text-yellow-400">Pending: {a2aStats.byState['input-required']}</span>
             </div>
           </div>
         )}
