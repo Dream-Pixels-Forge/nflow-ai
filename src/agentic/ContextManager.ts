@@ -181,18 +181,35 @@ export class ContextManager {
   }
 
   /**
-   * Compress session context
+   * Compress session context by summarizing old messages
    */
   compressSession(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
     const beforeCount = session.tokenCount;
+    const beforeMessages = session.conversationHistory.length;
 
-    // Keep only last 10 messages
-    if (session.conversationHistory.length > 10) {
-      const removed = session.conversationHistory.splice(0, session.conversationHistory.length - 10);
-      session.tokenCount -= removed.reduce((sum, msg) => sum + msg.tokenCount, 0);
+    // Keep last 6 messages intact, summarize the rest
+    if (session.conversationHistory.length > 6) {
+      const toSummarize = session.conversationHistory.splice(0, session.conversationHistory.length - 6);
+      const removedTokens = toSummarize.reduce((sum, msg) => sum + msg.tokenCount, 0);
+
+      // Create a summary of removed messages
+      const summaryParts = toSummarize.map(msg => {
+        const truncated = msg.content.length > 200 ? msg.content.slice(0, 200) + '...' : msg.content;
+        return `[${msg.role}]: ${truncated}`;
+      });
+
+      const summary: ConversationMessage = {
+        role: 'system',
+        content: `[Context Summary - ${beforeMessages} messages compressed] ${summaryParts.join(' | ')}`,
+        tokenCount: Math.ceil(summaryParts.join(' | ').length / 4),
+        timestamp: Date.now()
+      };
+
+      session.conversationHistory.unshift(summary);
+      session.tokenCount = session.conversationHistory.reduce((sum, msg) => sum + msg.tokenCount, 0);
     }
 
     // Update status

@@ -18,6 +18,7 @@ import {
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
 import { taskManager } from '../src/a2a/TaskManager';
+import { contextManager } from '../src/agentic/ContextManager';
 
 const generateData = () => {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -74,6 +75,12 @@ export const SystemMonitor: React.FC = () => {
   // A2A task stats
   const [a2aStats, setA2aStats] = useState(taskManager.getStats());
 
+  // Context compression stats
+  const [contextStats, setContextStats] = useState(() => {
+    const sessions = contextManager.getActiveSessions();
+    return sessions.length > 0 ? contextManager.getContextStats(sessions[0].id) : null;
+  });
+
   useEffect(() => {
     // Detect OS
     const platform = navigator.platform.toLowerCase();
@@ -105,6 +112,12 @@ export const SystemMonitor: React.FC = () => {
 
       // Refresh A2A stats
       setA2aStats(taskManager.getStats());
+
+      // Refresh context stats
+      const sessions = contextManager.getActiveSessions();
+      if (sessions.length > 0) {
+        setContextStats(contextManager.getContextStats(sessions[0].id));
+      }
 
     }, 1000);
     return () => clearInterval(interval);
@@ -190,6 +203,31 @@ export const SystemMonitor: React.FC = () => {
               <span className="text-green-400">Active: {a2aStats.byState.working + a2aStats.byState.submitted}</span>
               <span className="text-blue-400">Done: {a2aStats.byState.completed}</span>
               <span className="text-yellow-400">Pending: {a2aStats.byState['input-required']}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Context Health */}
+        {contextStats && (
+          <div className="border-t border-nexus-border pt-2 mt-2">
+            <div className="flex items-center gap-2 text-purple-500 text-xs mb-1">
+              <HardDrive size={12} />
+              <span className="font-mono">CONTEXT WINDOW</span>
+            </div>
+            <div className="h-1.5 w-full bg-nexus-800 rounded-sm overflow-hidden mb-1">
+              <div 
+                className={`h-full transition-all duration-300 ${
+                  contextStats.usagePercentage > 80 ? 'bg-red-500' :
+                  contextStats.usagePercentage > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                }`}
+                style={{ width: `${Math.min(contextStats.usagePercentage, 100)}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-[10px]">
+              <span className="text-gray-400">Tokens: <span className="text-white font-mono">{(contextStats.tokenCount / 1000).toFixed(1)}K</span></span>
+              <span className="text-gray-400">Usage: <span className={`font-mono ${contextStats.usagePercentage > 80 ? 'text-red-400' : 'text-white'}`}>{contextStats.usagePercentage.toFixed(0)}%</span></span>
+              <span className="text-gray-400">Messages: <span className="text-white font-mono">{contextStats.messageCount}</span></span>
+              <span className="text-gray-400">Auto-compress: <span className="text-green-400 font-mono">ON</span></span>
             </div>
           </div>
         )}
