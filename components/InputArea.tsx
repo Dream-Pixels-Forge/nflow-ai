@@ -88,7 +88,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
     <div className="px-4 pb-4 pt-2">
       {/* Emergency Panel */}
       {showEmergencyPanel && (
-        <div className="mb-3 p-4 bg-red-950/50 border border-red-500/30 rounded-xl">
+        <div className="mb-3 p-4 bg-red-950/50 border border-red-500/30 rounded-sm">
           <div className="flex items-center gap-2 text-red-400 text-sm font-medium mb-3">
             <AlertTriangle size={16} />
             <span>Emergency Stop</span>
@@ -99,19 +99,19 @@ export const InputArea: React.FC<InputAreaProps> = ({
               value={emergencyReason}
               onChange={(e) => setEmergencyReason(e.target.value)}
               placeholder="Reason for emergency stop..."
-              className="flex-1 bg-black/50 border border-red-500/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
+              className="flex-1 bg-black/50 border border-red-500/20 rounded-sm px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
               onKeyDown={(e) => e.key === 'Enter' && handleEmergencyStop()}
             />
             <button
               onClick={handleEmergencyStop}
               disabled={!emergencyReason.trim()}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:cursor-not-allowed text-white text-sm font-medium rounded-sm transition-colors"
             >
               HALT
             </button>
             <button
               onClick={() => setShowEmergencyPanel(false)}
-              className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-400 text-sm rounded-lg transition-colors"
+              className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-400 text-sm rounded-sm transition-colors"
             >
               Cancel
             </button>
@@ -121,7 +121,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
       {/* System Halted Banner */}
       {isHalted && (
-        <div className="mb-3 p-4 bg-red-950/50 border border-red-500/30 rounded-xl">
+        <div className="mb-3 p-4 bg-red-950/50 border border-red-500/30 rounded-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-red-400 text-sm font-medium">
               <XCircle size={16} />
@@ -129,7 +129,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             </div>
             <button
               onClick={handleResolveEmergency}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-2"
             >
               <CheckCircle size={14} />
               Resume
@@ -155,7 +155,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
       )}
 
       {/* Modern Input Container */}
-      <div className={`relative bg-zinc-900 border rounded-2xl shadow-lg transition-all duration-200 ${
+      <div className={`relative bg-zinc-900 border rounded-sm shadow-lg transition-all duration-200 ${
         isInputDisabled 
           ? 'border-red-500/30 opacity-60' 
           : 'border-zinc-700/50 focus-within:border-zinc-500 focus-within:shadow-zinc-500/10'
@@ -185,13 +185,13 @@ export const InputArea: React.FC<InputAreaProps> = ({
           {/* Left Actions */}
           <div className="flex items-center gap-1">
             <button
-              className="p-2 text-gray-500 hover:text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-300 hover:bg-zinc-800 rounded-sm transition-colors"
               title="Attach file"
             >
               <Paperclip size={18} />
             </button>
             <button
-              className="p-2 text-gray-500 hover:text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-300 hover:bg-zinc-800 rounded-sm transition-colors"
               title="Voice input"
             >
               <Mic size={18} />
@@ -200,7 +200,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             {/* Emergency Stop */}
             <button
               onClick={() => setShowEmergencyPanel(!showEmergencyPanel)}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-sm transition-colors ${
                 showEmergencyPanel 
                   ? 'bg-red-600 text-white' 
                   : 'text-red-400 hover:text-red-300 hover:bg-red-900/30'
@@ -223,7 +223,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             <button
               onClick={onSendMessage}
               disabled={isProcessing || isInputDisabled || !input.trim()}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${
+              className={`p-2.5 rounded-sm transition-all duration-200 ${
                 isProcessing || isInputDisabled || !input.trim()
                   ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
                   : 'bg-white text-black hover:bg-gray-200 active:scale-95'
