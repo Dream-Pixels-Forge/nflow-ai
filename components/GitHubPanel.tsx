@@ -60,8 +60,9 @@ export const GitHubPanel: React.FC<GitHubPanelProps> = ({ settings, onUpdate }) 
       setIssues(issuesData);
       setPrs(prsData);
       setReleases(releasesData);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load GitHub data');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load GitHub data';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -88,8 +89,9 @@ export const GitHubPanel: React.FC<GitHubPanelProps> = ({ settings, onUpdate }) 
       setNewIssueTitle('');
       setNewIssueBody('');
       await loadData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create issue');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create issue';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -106,8 +108,9 @@ export const GitHubPanel: React.FC<GitHubPanelProps> = ({ settings, onUpdate }) 
       setNewReleaseName('');
       setNewReleaseBody('');
       await loadData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create release');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create release';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

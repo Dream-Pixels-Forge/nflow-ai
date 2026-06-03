@@ -142,10 +142,11 @@ export const sendMessageToOllama = async (
       suggestedAgent
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to connect to Ollama.";
     console.error("Ollama Service Error:", error);
     return {
-      text: `[LOCAL KERNEL ERROR]: ${error.message || "Failed to connect to Ollama."}\n\nTip: Make sure Ollama is running and run 'launchctl setenv OLLAMA_ORIGINS "*"' or equivalent to allow browser requests.`
+      text: `[LOCAL KERNEL ERROR]: ${message}\n\nTip: Make sure Ollama is running and run 'launchctl setenv OLLAMA_ORIGINS "*"' or equivalent to allow browser requests.`
     };
   }
 };

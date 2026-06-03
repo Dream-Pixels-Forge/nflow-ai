@@ -289,6 +289,7 @@ function parseArguments(raw: string): Record<string, unknown> | null {
     }
     return null;
   } catch {
+    // JSON parse failure expected for malformed input
     return null;
   }
 }

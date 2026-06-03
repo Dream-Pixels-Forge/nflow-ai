@@ -102,10 +102,11 @@ export const sendMessageToGemini = async (
       suggestedAgent
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to communicate with agent core.";
     console.error("Gemini API Error:", error);
     return {
-      text: `[SYSTEM ERROR]: ${error.message || "Failed to communicate with agent core."}`
+      text: `[SYSTEM ERROR]: ${message}`
     };
   }
 };

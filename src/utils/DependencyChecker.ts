@@ -67,7 +67,8 @@ export const checkOllamaDependencies = async (ollamaUrl: string, generalModel: s
             "Configure OLLAMA_ORIGINS environment variable if needed: OLLAMA_ORIGINS=\"*\""
           ].filter(step => step.length > 0)
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return {
       timestamp,
       success: false,
@@ -79,7 +80,7 @@ export const checkOllamaDependencies = async (ollamaUrl: string, generalModel: s
         description: 'Ollama AI model server must be running and accessible'
       }],
       incompatibleDependencies: [],
-      message: `Cannot connect to Ollama at ${ollamaUrl}: ${error.message}`,
+      message: `Cannot connect to Ollama at ${ollamaUrl}: ${message}`,
       actionSteps: [
         "Install Ollama from https://ollama.ai/",
         `Start Ollama server with 'ollama serve'`,

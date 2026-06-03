@@ -1,6 +1,6 @@
 
 import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
-import { getSystemInstruction } from "./promptUtils";
+import { getSystemInstruction, buildContextInjection, extractAgentSwitch } from "./promptUtils";
 
 export interface OpenRouterConfig {
   apiKey: string;
@@ -62,20 +62,7 @@ export const sendMessageToOpenRouter = async (
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
-    // Construct Context from Tools
-    let contextInjection = "";
-    
-    if (tools.rag.active && tools.rag.content.length > 0) {
-      contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base:\n${tools.rag.content.join('\n---\n')}\n`;
-    }
-    
-    if (tools.mcp.active) {
-      contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
-    }
-
-    if (tools.fetch.active) {
-       contextInjection += `\n\n[SYSTEM: WEB FETCH]\nWeb search is enabled. URL target: ${tools.fetch.targetUrl || 'general'}`;
-    }
+    const contextInjection = buildContextInjection(tools);
 
     // Build messages array
     const systemMsg: OpenRouterMessage = {
@@ -136,30 +123,19 @@ export const sendMessageToOpenRouter = async (
     }
 
     const data: OpenRouterResponse = await response.json();
-    let responseText = data.choices[0]?.message?.content || "No response generated.";
-
-    // Extract Suggested Agent Switch
-    let suggestedAgent: AgentMode | undefined;
-    const switchRegex = /\[\[SWITCH_TO:(.*?)\]\]/;
-    const switchMatch = responseText.match(switchRegex);
-    if (switchMatch) {
-      const agentId = switchMatch[1].trim() as AgentMode;
-      const validAgents = Object.values(AgentMode);
-      if (validAgents.includes(agentId)) {
-        suggestedAgent = agentId;
-      }
-      responseText = responseText.replace(switchMatch[0], '').trim();
-    }
+    const rawText = data.choices[0]?.message?.content || "No response generated.";
+    const { cleanText, suggestedAgent } = extractAgentSwitch(rawText);
 
     return {
-      text: responseText,
+      text: cleanText,
       suggestedAgent
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to connect to OpenRouter API.";
     console.error("OpenRouter Service Error:", error);
     return {
-      text: `[OPENROUTER ERROR]: ${error.message || "Failed to connect to OpenRouter API."}\n\nTip: Get your API key from https://openrouter.ai/keys`
+      text: `[OPENROUTER ERROR]: ${message}\n\nTip: Get your API key from https://openrouter.ai/keys`
     };
   }
 };
@@ -177,7 +153,7 @@ export const getOpenRouterModels = async (apiKey: string): Promise<string[]> => 
     }
 
     const data = await response.json();
-    return data.data?.map((m: any) => m.id) || OPENROUTER_MODELS.map(m => m.id);
+    return data.data?.map((m: { id?: string }) => m.id) || OPENROUTER_MODELS.map(m => m.id);
   } catch (error) {
     console.warn("Failed to fetch OpenRouter models:", error);
     return OPENROUTER_MODELS.map(m => m.id);

@@ -1,6 +1,6 @@
 
 import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
-import { getSystemInstruction } from "./promptUtils";
+import { getSystemInstruction, buildContextInjection, extractAgentSwitch } from "./promptUtils";
 
 export interface NVIDIAConfig {
   apiKey: string;
@@ -62,20 +62,7 @@ export const sendMessageToNVIDIA = async (
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
-    // Construct Context from Tools
-    let contextInjection = "";
-    
-    if (tools.rag.active && tools.rag.content.length > 0) {
-      contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base:\n${tools.rag.content.join('\n---\n')}\n`;
-    }
-    
-    if (tools.mcp.active) {
-      contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
-    }
-
-    if (tools.fetch.active) {
-       contextInjection += `\n\n[SYSTEM: WEB FETCH]\nWeb search is enabled. URL target: ${tools.fetch.targetUrl || 'general'}`;
-    }
+    const contextInjection = buildContextInjection(tools);
 
     // Build messages array
     const systemMsg: NVIDIAMessage = {
@@ -119,30 +106,19 @@ export const sendMessageToNVIDIA = async (
     }
 
     const data: NVIDIAResponse = await response.json();
-    let responseText = data.choices[0]?.message?.content || "No response generated.";
-
-    // Extract Suggested Agent Switch
-    let suggestedAgent: AgentMode | undefined;
-    const switchRegex = /\[\[SWITCH_TO:(.*?)\]\]/;
-    const switchMatch = responseText.match(switchRegex);
-    if (switchMatch) {
-      const agentId = switchMatch[1].trim() as AgentMode;
-      const validAgents = Object.values(AgentMode);
-      if (validAgents.includes(agentId)) {
-        suggestedAgent = agentId;
-      }
-      responseText = responseText.replace(switchMatch[0], '').trim();
-    }
+    const rawText = data.choices[0]?.message?.content || "No response generated.";
+    const { cleanText, suggestedAgent } = extractAgentSwitch(rawText);
 
     return {
-      text: responseText,
+      text: cleanText,
       suggestedAgent
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to connect to NVIDIA NIM API.";
     console.error("NVIDIA Service Error:", error);
     return {
-      text: `[NVIDIA ERROR]: ${error.message || "Failed to connect to NVIDIA NIM API."}\n\nTip: Get your API key from https://build.nvidia.com/`
+      text: `[NVIDIA ERROR]: ${message}\n\nTip: Get your API key from https://build.nvidia.com/`
     };
   }
 };
@@ -160,7 +136,7 @@ export const getNVIDIAModels = async (apiKey: string): Promise<string[]> => {
     }
 
     const data = await response.json();
-    return data.data?.map((m: any) => m.id) || NVIDIA_MODELS.map(m => m.id);
+    return data.data?.map((m: { id?: string }) => m.id) || NVIDIA_MODELS.map(m => m.id);
   } catch (error) {
     console.warn("Failed to fetch NVIDIA models:", error);
     return NVIDIA_MODELS.map(m => m.id);

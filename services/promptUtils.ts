@@ -1,6 +1,55 @@
 
-import { AgentMode, Task, SuggestionLevel, ChatMode } from "../types";
+import { AgentMode, Task, SuggestionLevel, ChatMode, ToolState } from "../types";
 import { learningManager } from "../src/agentic/LearningManager";
+
+// ── Shared utilities for AI service providers ────────────────────────
+
+/**
+ * Build context injection string from tool state.
+ * Used by all AI service providers (Ollama, OpenRouter, NVIDIA, Gemini).
+ */
+export function buildContextInjection(tools: ToolState): string {
+  let context = "";
+  
+  if (tools.rag.active && tools.rag.content.length > 0) {
+    context += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base:\n${tools.rag.content.join('\n---\n')}\n`;
+  }
+  
+  if (tools.mcp.active) {
+    context += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
+  }
+
+  if (tools.fetch.active) {
+    context += `\n\n[SYSTEM: WEB FETCH]\nWeb search is enabled. URL target: ${tools.fetch.targetUrl || 'general'}`;
+  }
+
+  return context;
+}
+
+/**
+ * Extract agent switch suggestion from response text.
+ * Returns the cleaned text (without the tag) and the suggested agent mode.
+ */
+export function extractAgentSwitch(responseText: string): { 
+  cleanText: string; 
+  suggestedAgent?: AgentMode 
+} {
+  const switchRegex = /\[\[SWITCH_TO:(.*?)\]\]/;
+  const match = responseText.match(switchRegex);
+  
+  if (!match) {
+    return { cleanText: responseText };
+  }
+  
+  const agentId = match[1].trim() as AgentMode;
+  const validAgents = Object.values(AgentMode);
+  const suggestedAgent = validAgents.includes(agentId) ? agentId : undefined;
+  
+  return {
+    cleanText: responseText.replace(match[0], '').trim(),
+    suggestedAgent
+  };
+}
 
 export const getSystemInstruction = (
   mode: AgentMode, 

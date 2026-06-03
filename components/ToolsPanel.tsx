@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { 
-  Database, 
+  Database,
   Globe, 
   FileText, 
   Server, 
@@ -9,14 +9,11 @@ import {
   ChevronRight, 
   Power, 
   Upload, 
-  Plus, 
   Trash2, 
   X, 
   Link,
   Users,
-  CheckCircle,
   Clock,
-  AlertTriangle,
   Brain,
   Loader2
 } from 'lucide-react';
@@ -234,8 +231,9 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState,
                     const text = await response.text();
                     setFetchResult(text.substring(0, 2000) + (text.length > 2000 ? '\n... (truncated)' : ''));
                   }
-                } catch (err: any) {
-                  setFetchError(err.name === 'AbortError' ? 'Request timed out (10s)' : err.message || 'Fetch failed');
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Fetch failed';
+                  setFetchError(err instanceof Error && err.name === 'AbortError' ? 'Request timed out (10s)' : message);
                 } finally {
                   setFetchLoading(false);
                 }

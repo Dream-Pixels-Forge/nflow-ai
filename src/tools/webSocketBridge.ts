@@ -68,7 +68,8 @@ export class WebSocketBridge implements BackendBridge {
         this.#connected = false;
         this.#onConnectionChange?.(false);
       };
-    } catch {
+    } catch (err) {
+      console.error('[WebSocketBridge] Connection failed:', err);
       this.#connected = false;
       this.#onConnectionChange?.(false);
     }

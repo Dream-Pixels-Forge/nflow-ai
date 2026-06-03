@@ -59,9 +59,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
       if (models.length === 0) throw new Error("No models returned");
       setAvailableModels(models);
       setConnectionStatus('connected');
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Connection failed or blocked.';
       console.warn("Auto-fetch failed, using fallbacks", e);
-      setFetchError("Connection failed or blocked.");
+      setFetchError(message);
       setConnectionStatus('error');
       setAvailableModels(FALLBACK_MODELS); // Fallback so user can still select
     } finally {

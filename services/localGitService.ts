@@ -39,6 +39,7 @@ export const isGitRepo = async (): Promise<boolean> => {
     const response = await fetch('/.git/HEAD', { method: 'HEAD' });
     return response.ok;
   } catch {
+    console.warn('[localGitService] Could not detect git repo');
     return false;
   }
 };
@@ -50,7 +51,8 @@ export const getLocalBranches = async (): Promise<string[]> => {
     if (!response.ok) return [];
     const data = await response.json();
     return data.branches || [];
-  } catch {
+  } catch (err) {
+    console.warn('[localGitService] Failed to fetch branches:', err);
     return [];
   }
 };
@@ -62,7 +64,8 @@ export const getLocalTags = async (): Promise<LocalGitRelease[]> => {
     if (!response.ok) return [];
     const data = await response.json();
     return data.tags || [];
-  } catch {
+  } catch (err) {
+    console.warn('[localGitService] Failed to fetch tags:', err);
     return [];
   }
 };
@@ -74,7 +77,8 @@ export const getLocalCommits = async (count: number = 20): Promise<Array<{ hash:
     if (!response.ok) return [];
     const data = await response.json();
     return data.commits || [];
-  } catch {
+  } catch (err) {
+    console.warn('[localGitService] Failed to fetch commits:', err);
     return [];
   }
 };
@@ -85,7 +89,8 @@ export const getLocalStatus = async (): Promise<{ branch: string; ahead: number;
     const response = await fetch('/api/git/status');
     if (!response.ok) return null;
     return response.json();
-  } catch {
+  } catch (err) {
+    console.warn('[localGitService] Failed to fetch status:', err);
     return null;
   }
 };
