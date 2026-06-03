@@ -75,6 +75,9 @@ export default function App() {
   // HITL State
   const [pendingHITL, setPendingHITL] = useState<HITLRequest | null>(null);
 
+  // New Session Confirmation
+  const [showNewSessionConfirm, setShowNewSessionConfirm] = useState(false);
+
   // Orchestrator State
   const [transitionTarget, setTransitionTarget] = useState<AgentMode | null>(null);
 
@@ -385,9 +388,7 @@ export default function App() {
               agenticActions.haltAll();
             }}
             onNewSession={() => {
-              if (window.confirm('Start a new session? This will clear all messages.')) {
-                clearAllMessages();
-              }
+              setShowNewSessionConfirm(true);
             }}
           />
 
@@ -491,6 +492,37 @@ export default function App() {
             >
               UNDO
             </button>
+          </div>
+        )}
+
+        {/* New Session Confirmation Dialog */}
+        {showNewSessionConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-nexus-900 border border-nexus-border rounded-xl p-6 shadow-2xl w-[400px] animate-in zoom-in-95">
+              <h3 className="text-sm font-mono font-bold text-white mb-2">
+                NEW SESSION
+              </h3>
+              <p className="text-xs text-gray-400 mb-6">
+                Start a new session? This will clear all messages from all agents. This cannot be undone.
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setShowNewSessionConfirm(false)}
+                  className="px-3 py-1.5 text-xs font-mono text-gray-400 hover:text-white hover:bg-nexus-700 rounded transition-colors"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={() => {
+                    clearAllMessages();
+                    setShowNewSessionConfirm(false);
+                  }}
+                  className="px-3 py-1.5 text-xs font-mono font-bold text-white bg-red-600 hover:bg-red-500 rounded transition-colors"
+                >
+                  CLEAR ALL
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

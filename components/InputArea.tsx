@@ -591,7 +591,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
                   }`}
                   title="Chat Mode: Deep brainstorming, no code generation"
                 >
-                  💬 CHAT
+                  <MessageSquare size={10} />
+                  CHAT
                 </button>
                 <button
                   onClick={() => onChatModeChange('agent')}
@@ -602,7 +603,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
                   }`}
                   title="Agent Mode: Working mode with code generation"
                 >
-                  🤖 AGENT
+                  <Code size={10} />
+                  AGENT
                 </button>
               </div>
             )}
