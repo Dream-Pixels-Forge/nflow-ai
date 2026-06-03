@@ -169,7 +169,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             onKeyDown={handleKeyDown}
             placeholder={isHalted ? 'System halted - resume to continue' : `Message ${AGENTS[activeAgent].name}...`}
             className="w-full bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none px-4 pt-4 pb-2 text-sm leading-relaxed"
-            rows={1}
+            rows={2}
             disabled={isInputDisabled}
             autoFocus
           />
