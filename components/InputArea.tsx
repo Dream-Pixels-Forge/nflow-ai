@@ -15,7 +15,7 @@ import {
   File,
   Command
 } from 'lucide-react';
-import { AGENTS, AgentMode } from '../types';
+import { AGENTS, AgentMode, AppSettings, PROVIDER_NAMES } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 
 const SLASH_COMMANDS = [
@@ -45,6 +45,7 @@ interface InputAreaProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onSendMessage: () => void;
   onFilesAttached?: (files: File[]) => void;
+  settings?: AppSettings;
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
@@ -55,7 +56,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   transitionTarget,
   onKeyDown,
   onSendMessage,
-  onFilesAttached
+  onFilesAttached,
+  settings
 }) => {
   // Agentic systems
   const [agenticState, agenticActions] = useAgenticSystems();
@@ -424,7 +426,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
       )}
 
       {/* Modern Input Container */}
-      <div className={`relative bg-zinc-900 border rounded-sm shadow-lg transition-all duration-200 ${
+      <div className={`relative bg-zinc-900 border rounded-md shadow-lg transition-all duration-200 ${
         isInputDisabled 
           ? 'border-red-500/30 opacity-60' 
           : 'border-zinc-700/50 focus-within:border-zinc-500 focus-within:shadow-zinc-500/10'
@@ -529,6 +531,50 @@ export const InputArea: React.FC<InputAreaProps> = ({
             >
               <StopCircle size={18} />
             </button>
+
+            {/* Provider Badge */}
+            {settings && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono">
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  settings.aiProvider === 'ollama' ? 'bg-green-500' :
+                  settings.aiProvider === 'gemini' ? 'bg-blue-500' :
+                  settings.aiProvider === 'openrouter' ? 'bg-purple-500' :
+                  'bg-orange-500'
+                }`} />
+                <span className="text-gray-400">{PROVIDER_NAMES[settings.aiProvider]}</span>
+              </div>
+            )}
+
+            {/* Model Dropdown */}
+            {settings && settings.aiProvider === 'ollama' && (
+              <select
+                value={settings.ollamaGeneralModel}
+                onChange={(e) => {
+                  // This would need a settings update callback - for now just display
+                }}
+                className="bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 px-2 py-1.5 font-mono cursor-pointer hover:border-zinc-600 transition-colors"
+              >
+                <option value={settings.ollamaGeneralModel}>{settings.ollamaGeneralModel}</option>
+                {settings.ollamaCodingModel && settings.ollamaCodingModel !== settings.ollamaGeneralModel && (
+                  <option value={settings.ollamaCodingModel}>{settings.ollamaCodingModel} (code)</option>
+                )}
+              </select>
+            )}
+            {settings && settings.aiProvider === 'openrouter' && settings.openrouterModel && (
+              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono truncate max-w-[120px]" title={settings.openrouterModel}>
+                {settings.openrouterModel.split('/').pop()}
+              </div>
+            )}
+            {settings && settings.aiProvider === 'gemini' && (
+              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono">
+                gemini-2.0-flash
+              </div>
+            )}
+            {settings && settings.aiProvider === 'nvidia' && settings.nvidiaModel && (
+              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono truncate max-w-[120px]" title={settings.nvidiaModel}>
+                {settings.nvidiaModel.split('/').pop()}
+              </div>
+            )}
           </div>
 
           {/* Right Actions */}

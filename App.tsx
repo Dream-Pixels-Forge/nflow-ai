@@ -375,6 +375,7 @@ export default function App() {
             transitionTarget={transitionTarget}
             onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
+            settings={settings}
             onFilesAttached={(files) => {
               // Add attached files to RAG context (one FileReader per file)
               files.forEach(file => {
