@@ -74,14 +74,21 @@ export const sendMessageToGeminiStream = async function* (
         systemInstruction: systemInstruction,
         temperature: 0.7,
         maxOutputTokens: 8192,
+        tools: tools.fetch.active ? [{ googleSearch: {} }] : undefined,
       }
     });
 
     let fullText = "";
+    let groundingChunks: Array<{ web?: { uri?: string } }> = [];
 
     for await (const chunk of response) {
       const chunkText = chunk.text || "";
       fullText += chunkText;
+
+      // Collect grounding metadata from streaming chunks
+      if ((chunk as any).groundingMetadata?.groundingChunks) {
+        groundingChunks.push(...(chunk as any).groundingMetadata.groundingChunks);
+      }
       
       yield {
         text: chunkText,
@@ -91,15 +98,25 @@ export const sendMessageToGeminiStream = async function* (
 
     // Parse final response for sources and suggested agent
     const sources: string[] = [];
-    let suggestedAgent: AgentMode | undefined;
 
-    // Simple URL extraction
-    const urlRegex = /https?:\/\/[^\s\)]+/g;
-    const urls = fullText.match(urlRegex);
-    if (urls) sources.push(...urls);
+    // Extract from grounding metadata (structured sources)
+    if (groundingChunks.length > 0) {
+      const uris = groundingChunks
+        .map(chunk => chunk.web?.uri)
+        .filter((uri): uri is string => !!uri);
+      sources.push(...Array.from(new Set(uris)));
+    }
+
+    // Fallback: extract URLs from text
+    if (sources.length === 0) {
+      const urlRegex = /https?:\/\/[^\s\)]+/g;
+      const urls = fullText.match(urlRegex);
+      if (urls) sources.push(...urls);
+    }
 
     // Check for agent suggestion
     const agentMatch = fullText.match(/\[\[SWITCH_TO:(.*?)\]\]/);
+    let suggestedAgent: AgentMode | undefined;
     if (agentMatch) {
       suggestedAgent = agentMatch[1] as AgentMode;
     }
