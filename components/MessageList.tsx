@@ -112,12 +112,16 @@ export const MessageList: React.FC<MessageListProps> = ({
                      <div className={`flex items-center gap-2 text-[10px] uppercase ${isUser ? 'justify-end text-nexus-dim' : AGENTS[msg.agent].color}`}>
                          {isUser ? 'YOU' : msg.agent} <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString()}</span>
                      </div>
-                     <div className={`p-4 rounded-sm text-sm leading-relaxed whitespace-pre-wrap font-mono shadow-lg relative
-                         ${isUser
-                             ? 'bg-nexus-800 text-gray-200 border border-nexus-border'
-                             : 'bg-black text-gray-300 border-l-2 border-nexus-border ' + AGENTS[msg.agent].color.replace('text-', 'border-')
-                         }`}>
-                         {msg.content}
+                      <div className={`p-4 rounded-sm text-sm leading-relaxed whitespace-pre-wrap font-mono shadow-lg relative
+                          ${isUser
+                              ? 'bg-nexus-800 text-gray-200 border border-nexus-border'
+                              : 'bg-black text-gray-300 border-l-2 border-nexus-border ' + AGENTS[msg.agent].color.replace('text-', 'border-')
+                          }`}>
+                          {msg.content}
+                          {/* Streaming cursor */}
+                          {msg.isStreaming && (
+                            <span className="inline-block w-2 h-4 bg-nexus-accent ml-0.5 animate-pulse" />
+                          )}
 
                          {/* Render Grounding Sources if present */}
                          {msg.grounding && msg.grounding.urls.length > 0 && (
@@ -190,7 +194,8 @@ export const MessageList: React.FC<MessageListProps> = ({
              </div>
          );
       })}
-      {isProcessing && (
+      {/* Only show loading indicator when processing but no streaming message yet */}
+      {isProcessing && !messages.some(m => m.isStreaming) && (
         <div className="flex gap-4 animate-pulse">
              <div className={`w-8 h-8 rounded bg-nexus-800 border border-nexus-border flex items-center justify-center ${AGENTS[activeAgent].color}`}>
                  <Loader2 size={16} className="animate-spin" />

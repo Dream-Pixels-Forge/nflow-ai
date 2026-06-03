@@ -1,0 +1,149 @@
+
+import { sendMessageToGeminiStream, StreamChunk } from "./geminiStreamService";
+import { sendMessageToOllama } from "./ollamaService";
+import { sendMessageToOpenRouter, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
+import { sendMessageToNVIDIA, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
+import { sendMessageToOpenCode, DEFAULT_OPENCODE_CONFIG } from "./openCodeService";
+import { AgentMode, Message, ToolState, Task, AppSettings } from "../types";
+
+const TECHNICAL_AGENTS = [
+  AgentMode.CODER,
+  AgentMode.ARCHITECT,
+  AgentMode.TEST,
+  AgentMode.SECURE,
+  AgentMode.DEPLOY
+];
+
+// Streaming version for Gemini
+export const sendMessageToAgentStream = async function* (
+  prompt: string,
+  history: Message[],
+  agent: AgentMode,
+  tools: ToolState,
+  projectSummary: string = "",
+  currentTasks: Task[] = [],
+  settings: AppSettings
+): AsyncGenerator<StreamChunk> {
+  
+  // Only Gemini supports streaming for now
+  if (settings.aiProvider === 'gemini') {
+    yield* sendMessageToGeminiStream(
+      prompt,
+      history,
+      agent,
+      tools,
+      projectSummary,
+      currentTasks,
+      settings.suggestionLevel
+    );
+  } else {
+    // For other providers, simulate streaming by yielding chunks
+    const response = await sendMessageToNonStreamingProvider(
+      prompt, history, agent, tools, projectSummary, currentTasks, settings
+    );
+    
+    // Yield text in chunks to simulate streaming
+    const chunkSize = 10;
+    for (let i = 0; i < response.text.length; i += chunkSize) {
+      yield {
+        text: response.text.slice(i, i + chunkSize),
+        done: false
+      };
+      // Small delay to simulate streaming
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    
+    yield {
+      text: "",
+      done: true,
+      sources: response.sources,
+      suggestedAgent: response.suggestedAgent
+    };
+  }
+};
+
+// Non-streaming helper for other providers
+const sendMessageToNonStreamingProvider = async (
+  prompt: string,
+  history: Message[],
+  agent: AgentMode,
+  tools: ToolState,
+  projectSummary: string = "",
+  currentTasks: Task[] = [],
+  settings: AppSettings
+): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
+  
+  switch (settings.aiProvider) {
+    case 'ollama': {
+      const isTechnical = TECHNICAL_AGENTS.includes(agent);
+      const targetModel = isTechnical ? settings.ollamaCodingModel : settings.ollamaGeneralModel;
+
+      return sendMessageToOllama(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        settings.ollamaUrl,
+        targetModel || settings.ollamaGeneralModel
+      );
+    }
+
+    case 'openrouter': {
+      return sendMessageToOpenRouter(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.openrouterApiKey || '',
+          model: settings.openrouterModel || DEFAULT_OPENROUTER_CONFIG.model,
+          baseUrl: DEFAULT_OPENROUTER_CONFIG.baseUrl
+        }
+      );
+    }
+
+    case 'nvidia': {
+      return sendMessageToNVIDIA(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.nvidiaApiKey || '',
+          model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
+          baseUrl: settings.nvidiaBaseUrl || DEFAULT_NVIDIA_CONFIG.baseUrl
+        }
+      );
+    }
+
+    case 'opencode': {
+      return sendMessageToOpenCode(
+        prompt,
+        history,
+        agent,
+        tools,
+        projectSummary,
+        currentTasks,
+        settings.suggestionLevel,
+        {
+          apiKey: settings.opencodeApiKey || '',
+          model: settings.opencodeModel || DEFAULT_OPENCODE_CONFIG.model,
+          baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_CONFIG.baseUrl
+        }
+      );
+    }
+
+    default: {
+      throw new Error(`Unsupported provider: ${settings.aiProvider}`);
+    }
+  }
+};

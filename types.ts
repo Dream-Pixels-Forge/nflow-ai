@@ -25,6 +25,7 @@ export interface Message {
   timestamp: number;
   agent: AgentMode;
   isError?: boolean;
+  isStreaming?: boolean;
   grounding?: {
     urls: string[];
   };

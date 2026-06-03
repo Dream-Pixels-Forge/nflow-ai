@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
+import { sendMessageToAgentStream } from '../services/aiStreamService';
 
 interface UseAgentChatProps {
   activeAgent: AgentMode;
@@ -135,45 +136,86 @@ export const useAgentChat = ({
       [activeAgent]: [...prev[activeAgent], userMsg]
     }));
 
+    // Create a temporary message ID for streaming
+    const streamingMsgId = (Date.now() + 1).toString();
+    let streamedContent = "";
+
     try {
-      // Use the unified AI Service which handles routing to Gemini or Ollama
-      const response = await sendMessageToAgent(
-          currentInput, 
-          agentHistories[activeAgent], 
-          activeAgent, 
-          toolState, 
-          lastAgentResume,
-          tasks,
-          settings // Pass the full settings object containing provider info
+      // Use streaming AI Service
+      const stream = sendMessageToAgentStream(
+        currentInput, 
+        agentHistories[activeAgent], 
+        activeAgent, 
+        toolState, 
+        lastAgentResume,
+        tasks,
+        settings
       );
 
-      const agentMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.text,
-        timestamp: Date.now(),
-        agent: activeAgent,
-        grounding: response.sources ? { urls: response.sources } : undefined
-      };
+      // Process stream chunks
+      for await (const chunk of stream) {
+        if (chunk.done) {
+          // Stream finished - finalize the message
+          const finalMsg: Message = {
+            id: streamingMsgId,
+            role: 'assistant',
+            content: streamedContent,
+            timestamp: Date.now(),
+            agent: activeAgent,
+            grounding: chunk.sources ? { urls: chunk.sources } : undefined
+          };
 
-      setAgentHistories(prev => ({
-        ...prev,
-        [activeAgent]: [...prev[activeAgent], agentMsg]
-      }));
+          // Replace the streaming message with final version
+          setAgentHistories(prev => ({
+            ...prev,
+            [activeAgent]: [...prev[activeAgent].filter(m => m.id !== streamingMsgId), finalMsg]
+          }));
 
-      // Task Extraction (Only if PLAN agent)
-      if (activeAgent === AgentMode.PLAN) {
-         extractTasksFromContent(response.text);
-      }
+          // Task Extraction (Only if PLAN agent)
+          if (activeAgent === AgentMode.PLAN) {
+            extractTasksFromContent(streamedContent);
+          }
 
-      // File Extraction (Coder, Architect, Test, Deploy)
-      if ([AgentMode.CODER, AgentMode.ARCHITECT, AgentMode.TEST, AgentMode.DEPLOY].includes(activeAgent)) {
-         extractFilesFromContent(response.text);
-      }
+          // File Extraction (Coder, Architect, Test, Deploy)
+          if ([AgentMode.CODER, AgentMode.ARCHITECT, AgentMode.TEST, AgentMode.DEPLOY].includes(activeAgent)) {
+            extractFilesFromContent(streamedContent);
+          }
 
-      // Handle Orchestrator Suggestion
-      if (response.suggestedAgent && response.suggestedAgent !== activeAgent) {
-        setPendingSwitch(response.suggestedAgent);
+          // Handle Orchestrator Suggestion
+          if (chunk.suggestedAgent && chunk.suggestedAgent !== activeAgent) {
+            setPendingSwitch(chunk.suggestedAgent);
+          }
+        } else {
+          // Accumulate streamed text
+          streamedContent += chunk.text;
+          
+          // Update the streaming message in history
+          setAgentHistories(prev => {
+            const messages = prev[activeAgent];
+            const existingIdx = messages.findIndex(m => m.id === streamingMsgId);
+            
+            if (existingIdx >= 0) {
+              // Update existing streaming message
+              const updated = [...messages];
+              updated[existingIdx] = {
+                ...updated[existingIdx],
+                content: streamedContent
+              };
+              return { ...prev, [activeAgent]: updated };
+            } else {
+              // Create new streaming message
+              const streamingMsg: Message = {
+                id: streamingMsgId,
+                role: 'assistant',
+                content: streamedContent,
+                timestamp: Date.now(),
+                agent: activeAgent,
+                isStreaming: true
+              };
+              return { ...prev, [activeAgent]: [...messages, streamingMsg] };
+            }
+          });
+        }
       }
 
     } catch (error) {
