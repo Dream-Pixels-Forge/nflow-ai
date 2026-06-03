@@ -13,10 +13,12 @@ import {
   FileText,
   Image,
   File,
-  Command
+  Command,
+  ChevronUp
 } from 'lucide-react';
-import { AGENTS, AgentMode, AppSettings, PROVIDER_NAMES } from '../types';
+import { AGENTS, AgentMode, AppSettings, AIProvider, PROVIDER_NAMES } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
+import { getOllamaModels } from '../services/ollamaService';
 
 const SLASH_COMMANDS = [
   { cmd: '/chat', desc: 'Switch to Chat agent', agent: AgentMode.CHAT },
@@ -71,11 +73,19 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [filteredCommands, setFilteredCommands] = useState(SLASH_COMMANDS);
   
+  // Dropdown states
+  const [showProviderDropdown, setShowProviderDropdown] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<any>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const providerDropdownRef = useRef<HTMLDivElement>(null);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -100,6 +110,38 @@ export const InputArea: React.FC<InputAreaProps> = ({
         recognitionRef.current.stop();
       }
     };
+  }, []);
+
+  // Fetch Ollama models when provider is ollama
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (settings?.aiProvider === 'ollama') {
+        setLoadingModels(true);
+        try {
+          const models = await getOllamaModels(settings.ollamaUrl);
+          setAvailableModels(models);
+        } catch (err) {
+          console.warn('Failed to fetch Ollama models:', err);
+          setAvailableModels([]);
+        }
+        setLoadingModels(false);
+      }
+    };
+    fetchModels();
+  }, [settings?.aiProvider, settings?.ollamaUrl]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (providerDropdownRef.current && !providerDropdownRef.current.contains(event.target as Node)) {
+        setShowProviderDropdown(false);
+      }
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleEmergencyStop = async () => {
@@ -532,47 +574,156 @@ export const InputArea: React.FC<InputAreaProps> = ({
               <StopCircle size={18} />
             </button>
 
-            {/* Provider Badge */}
+            {/* Provider Drop-up */}
             {settings && (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono">
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  settings.aiProvider === 'ollama' ? 'bg-green-500' :
-                  settings.aiProvider === 'gemini' ? 'bg-blue-500' :
-                  settings.aiProvider === 'openrouter' ? 'bg-purple-500' :
-                  'bg-orange-500'
-                }`} />
-                <span className="text-gray-400">{PROVIDER_NAMES[settings.aiProvider]}</span>
+              <div className="relative" ref={providerDropdownRef}>
+                <button
+                  onClick={() => {
+                    setShowProviderDropdown(!showProviderDropdown);
+                    setShowModelDropdown(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono hover:border-zinc-600 transition-colors"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    settings.aiProvider === 'ollama' ? 'bg-green-500' :
+                    settings.aiProvider === 'gemini' ? 'bg-blue-500' :
+                    settings.aiProvider === 'openrouter' ? 'bg-purple-500' :
+                    'bg-orange-500'
+                  }`} />
+                  <span className="text-gray-400">{PROVIDER_NAMES[settings.aiProvider]}</span>
+                  <ChevronUp size={10} className={`text-gray-500 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showProviderDropdown && (
+                  <div className="absolute bottom-full left-0 mb-1 w-40 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl overflow-hidden z-50">
+                    {([
+                      { id: 'ollama' as AIProvider, name: 'Ollama (Local)', color: 'bg-green-500' },
+                      { id: 'gemini' as AIProvider, name: 'Google Gemini', color: 'bg-blue-500' },
+                      { id: 'openrouter' as AIProvider, name: 'OpenRouter', color: 'bg-purple-500' },
+                      { id: 'nvidia' as AIProvider, name: 'NVIDIA NIM', color: 'bg-orange-500' }
+                    ]).map((provider) => (
+                      <button
+                        key={provider.id}
+                        onClick={() => {
+                          // Provider change would need settings callback
+                          setShowProviderDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
+                          settings.aiProvider === provider.id ? 'bg-zinc-700' : ''
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${provider.color}`} />
+                        <span className="text-xs text-gray-300">{provider.name}</span>
+                        {settings.aiProvider === provider.id && (
+                          <CheckCircle size={12} className="text-green-500 ml-auto" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Model Dropdown */}
-            {settings && settings.aiProvider === 'ollama' && (
-              <select
-                value={settings.ollamaGeneralModel}
-                onChange={(e) => {
-                  // This would need a settings update callback - for now just display
-                }}
-                className="bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 px-2 py-1.5 font-mono cursor-pointer hover:border-zinc-600 transition-colors"
-              >
-                <option value={settings.ollamaGeneralModel}>{settings.ollamaGeneralModel}</option>
-                {settings.ollamaCodingModel && settings.ollamaCodingModel !== settings.ollamaGeneralModel && (
-                  <option value={settings.ollamaCodingModel}>{settings.ollamaCodingModel} (code)</option>
+            {/* Model Drop-up */}
+            {settings && (
+              <div className="relative" ref={modelDropdownRef}>
+                <button
+                  onClick={() => {
+                    setShowModelDropdown(!showModelDropdown);
+                    setShowProviderDropdown(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono hover:border-zinc-600 transition-colors max-w-[140px]"
+                >
+                  <span className="text-gray-400 truncate">
+                    {loadingModels ? 'Loading...' :
+                     settings.aiProvider === 'ollama' ? (settings.ollamaGeneralModel || 'Select model') :
+                     settings.aiProvider === 'openrouter' ? (settings.openrouterModel?.split('/').pop() || 'Select model') :
+                     settings.aiProvider === 'gemini' ? 'gemini-2.0-flash' :
+                     settings.nvidiaModel?.split('/').pop() || 'Select model'}
+                  </span>
+                  <ChevronUp size={10} className={`text-gray-500 transition-transform flex-shrink-0 ${showModelDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showModelDropdown && (
+                  <div className="absolute bottom-full left-0 mb-1 w-56 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl overflow-hidden z-50 max-h-64 overflow-y-auto">
+                    {settings.aiProvider === 'ollama' ? (
+                      availableModels.length > 0 ? (
+                        availableModels.map((model) => (
+                          <button
+                            key={model}
+                            onClick={() => {
+                              // Model change would need settings callback
+                              setShowModelDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
+                              settings.ollamaGeneralModel === model ? 'bg-zinc-700' : ''
+                            }`}
+                          >
+                            <span className="text-xs text-gray-300 truncate">{model}</span>
+                            {settings.ollamaGeneralModel === model && (
+                              <CheckCircle size={12} className="text-green-500 ml-auto flex-shrink-0" />
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-4 text-center text-xs text-gray-500">
+                          {loadingModels ? 'Loading models...' : 'No models found'}
+                        </div>
+                      )
+                    ) : settings.aiProvider === 'openrouter' ? (
+                      // Common OpenRouter models
+                      ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3-haiku', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'google/gemini-2.0-flash', 'meta-llama/llama-3.1-405b-instruct', 'mistralai/mixtral-8x7b-instruct'].map((model) => (
+                        <button
+                          key={model}
+                          onClick={() => {
+                            // Model change would need settings callback
+                            setShowModelDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
+                            settings.openrouterModel === model ? 'bg-zinc-700' : ''
+                          }`}
+                        >
+                          <span className="text-xs text-gray-300 truncate">{model.split('/').pop()}</span>
+                          <span className="text-[9px] text-gray-500 truncate">{model.split('/')[0]}</span>
+                          {settings.openrouterModel === model && (
+                            <CheckCircle size={12} className="text-green-500 ml-auto flex-shrink-0" />
+                          )}
+                        </button>
+                      ))
+                    ) : settings.aiProvider === 'gemini' ? (
+                      ['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'].map((model) => (
+                        <button
+                          key={model}
+                          onClick={() => {
+                            setShowModelDropdown(false);
+                          }}
+                          className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left"
+                        >
+                          <span className="text-xs text-gray-300">{model}</span>
+                        </button>
+                      ))
+                    ) : (
+                      // NVIDIA models
+                      ['meta/llama-3.1-8b-instruct', 'meta/llama-3.1-70b-instruct', 'mistralai/mistral-7b-instruct', 'google/gemma-2-9b-it'].map((model) => (
+                        <button
+                          key={model}
+                          onClick={() => {
+                            setShowModelDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
+                            settings.nvidiaModel === model ? 'bg-zinc-700' : ''
+                          }`}
+                        >
+                          <span className="text-xs text-gray-300 truncate">{model.split('/').pop()}</span>
+                          <span className="text-[9px] text-gray-500 truncate">{model.split('/')[0]}</span>
+                          {settings.nvidiaModel === model && (
+                            <CheckCircle size={12} className="text-green-500 ml-auto flex-shrink-0" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 )}
-              </select>
-            )}
-            {settings && settings.aiProvider === 'openrouter' && settings.openrouterModel && (
-              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono truncate max-w-[120px]" title={settings.openrouterModel}>
-                {settings.openrouterModel.split('/').pop()}
-              </div>
-            )}
-            {settings && settings.aiProvider === 'gemini' && (
-              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono">
-                gemini-2.0-flash
-              </div>
-            )}
-            {settings && settings.aiProvider === 'nvidia' && settings.nvidiaModel && (
-              <div className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-gray-400 font-mono truncate max-w-[120px]" title={settings.nvidiaModel}>
-                {settings.nvidiaModel.split('/').pop()}
               </div>
             )}
           </div>
