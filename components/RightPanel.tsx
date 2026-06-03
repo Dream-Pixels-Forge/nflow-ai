@@ -36,13 +36,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Determine which content to show
+  const isMainTab = ['telemetry', 'tools', 'github'].includes(rightPanelTab);
+  const isSecondaryTab = ['workflow', 'adaptive'].includes(rightPanelTab);
+
   return (
     <div className="w-80 bg-nexus-900 border-l border-nexus-border flex flex-col z-10 shadow-xl">
-      {/* Tab Buttons with Toggle */}
+      {/* Primary Tabs Row */}
       <div className="flex border-b border-nexus-border">
         <button
           onClick={() => onSetRightPanelTab('telemetry')}
-          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
             rightPanelTab === 'telemetry'
               ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
               : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
@@ -53,7 +57,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </button>
         <button
           onClick={() => onSetRightPanelTab('tools')}
-          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
             rightPanelTab === 'tools'
               ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
               : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
@@ -64,7 +68,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </button>
         <button
           onClick={() => onSetRightPanelTab('github')}
-          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
             rightPanelTab === 'github'
               ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
               : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
@@ -74,33 +78,37 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           GitHub
         </button>
         <button
+          onClick={onToggle}
+          className="px-2 py-2 bg-nexus-800 hover:bg-nexus-700 border-l border-nexus-border text-gray-500 hover:text-white transition-colors"
+          title="Collapse Panel"
+        >
+          <PanelRightClose size={12} />
+        </button>
+      </div>
+
+      {/* Secondary Tabs Row - Flow & Adaptive */}
+      <div className="flex border-b border-nexus-border bg-nexus-800/30">
+        <button
           onClick={() => onSetRightPanelTab('workflow')}
-          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
             rightPanelTab === 'workflow'
-              ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
-              : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+              ? 'text-cyan-400 border-b border-cyan-400'
+              : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          <GitBranch size={12} />
+          <GitBranch size={10} />
           Flow
         </button>
         <button
           onClick={() => onSetRightPanelTab('adaptive')}
-          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
             rightPanelTab === 'adaptive'
-              ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
-              : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+              ? 'text-cyan-400 border-b border-cyan-400'
+              : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          <Layers size={12} />
+          <Layers size={10} />
           Adaptive
-        </button>
-        <button
-          onClick={onToggle}
-          className="px-2 py-2.5 bg-nexus-800 hover:bg-nexus-700 border-l border-nexus-border text-gray-500 hover:text-white transition-colors"
-          title="Collapse Panel"
-        >
-          <PanelRightClose size={12} />
         </button>
       </div>
 
