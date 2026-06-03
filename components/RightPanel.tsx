@@ -1,20 +1,22 @@
 import React from 'react';
-import { ToolState, AppSettings, Message } from '../types';
+import { ToolState, AppSettings, Message, AgentMode } from '../types';
 import { SystemMonitor } from './SystemMonitor';
 import { ToolsPanel } from './ToolsPanel';
 import { GitHubPanel } from './GitHubPanel';
-import { Activity, Wrench, Github, PanelRightClose } from 'lucide-react';
+import { AgentWorkflow } from './AgentWorkflow';
+import { Activity, Wrench, Github, GitBranch, PanelRightClose } from 'lucide-react';
 
 interface RightPanelProps {
-  rightPanelTab: 'telemetry' | 'tools' | 'github';
+  rightPanelTab: 'telemetry' | 'tools' | 'github' | 'workflow';
   toolState: ToolState;
   settings: AppSettings;
-  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github') => void;
+  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github' | 'workflow') => void;
   onSetToolState: React.Dispatch<React.SetStateAction<ToolState>>;
   onUpdateSettings: (newSettings: AppSettings) => void;
   isOpen: boolean;
   onToggle: () => void;
   messages?: Message[];
+  activeAgent?: AgentMode;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -26,7 +28,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onUpdateSettings,
   isOpen,
   onToggle,
-  messages
+  messages,
+  activeAgent
 }) => {
   if (!isOpen) return null;
 
@@ -68,6 +71,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           GitHub
         </button>
         <button
+          onClick={() => onSetRightPanelTab('workflow')}
+          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+            rightPanelTab === 'workflow'
+              ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
+              : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+          }`}
+        >
+          <GitBranch size={12} />
+          Flow
+        </button>
+        <button
           onClick={onToggle}
           className="px-2 py-2.5 bg-nexus-800 hover:bg-nexus-700 border-l border-nexus-border text-gray-500 hover:text-white transition-colors"
           title="Collapse Panel"
@@ -81,6 +95,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {rightPanelTab === 'telemetry' && <SystemMonitor />}
         {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} messages={messages} />}
         {rightPanelTab === 'github' && <GitHubPanel settings={settings} onUpdate={onUpdateSettings} />}
+        {rightPanelTab === 'workflow' && <AgentWorkflow activeAgent={activeAgent || 'CHAT' as AgentMode} />}
       </div>
     </div>
   );

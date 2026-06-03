@@ -68,7 +68,7 @@ export default function App() {
   const [agenticState, agenticActions] = useAgenticSystems();
 
   const [showBootSequence, setShowBootSequence] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools' | 'github'>('telemetry');
+  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools' | 'github' | 'workflow'>('telemetry');
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
@@ -471,6 +471,7 @@ export default function App() {
           isOpen={showRightPanel}
           onToggle={() => setShowRightPanel(false)}
           messages={currentMessages}
+          activeAgent={activeAgent}
         />
 
         {/* Undo Delete Toast */}
