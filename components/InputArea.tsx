@@ -85,7 +85,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   };
 
   return (
-    <div className="px-4 pb-4 pt-2">
+    <div className="px-4 pb-4 pt-2 flex justify-center">
+      <div className="w-full max-w-[1000px]">
       {/* Emergency Panel */}
       {showEmergencyPanel && (
         <div className="mb-3 p-4 bg-red-950/50 border border-red-500/30 rounded-sm">
@@ -244,6 +245,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
         <span className="text-xs text-gray-600">
           Press <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded text-gray-400 font-mono text-[10px]">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded text-gray-400 font-mono text-[10px]">Shift + Enter</kbd> for new line
         </span>
+      </div>
       </div>
     </div>
   );
