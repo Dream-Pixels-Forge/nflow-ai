@@ -109,6 +109,13 @@ export type {
   LearningConfig
 } from './LearningManager';
 
+export { CollaborationManager, collaborationManager } from './CollaborationManager';
+export type {
+  CollaborationSignal,
+  CollaborationSuggestion,
+  CollaborationConfig
+} from './CollaborationManager';
+
 // A2A Protocol
 export {
   AgentCardManager,

@@ -20,6 +20,7 @@ import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
 import { taskManager } from '../src/a2a/TaskManager';
 import { contextManager } from '../src/agentic/ContextManager';
 import { learningManager } from '../src/agentic/LearningManager';
+import { collaborationManager } from '../src/agentic/CollaborationManager';
 
 const generateData = () => {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -85,6 +86,9 @@ export const SystemMonitor: React.FC = () => {
   // Learning stats
   const [learningStats, setLearningStats] = useState(learningManager.getStats());
 
+  // Collaboration stats
+  const [collabStats, setCollabStats] = useState(collaborationManager.getStats());
+
   useEffect(() => {
     // Detect OS
     const platform = navigator.platform.toLowerCase();
@@ -125,6 +129,9 @@ export const SystemMonitor: React.FC = () => {
 
       // Refresh learning stats
       setLearningStats(learningManager.getStats());
+
+      // Refresh collaboration stats
+      setCollabStats(collaborationManager.getStats());
 
     }, 1000);
     return () => clearInterval(interval);
@@ -257,6 +264,33 @@ export const SystemMonitor: React.FC = () => {
                   <span className="text-gray-400">{count}</span>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Collaboration System */}
+        <div className="border-t border-nexus-border pt-2 mt-2">
+          <div className="flex items-center gap-2 text-cyan-500 text-xs mb-1">
+            <GitBranch size={12} />
+            <span className="font-mono">AGENT COLLABORATION</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1 text-[10px]">
+            <span className="text-gray-400">Signals: <span className="text-white font-mono">{collabStats.totalSignals}</span></span>
+            <span className="text-gray-400">Suggestions: <span className="text-yellow-400 font-mono">{collabStats.activeSuggestions}</span></span>
+          </div>
+          {collabStats.activeSuggestions > 0 && (
+            <div className="mt-2 p-2 bg-nexus-800/50 border border-cyan-500/30 rounded-sm">
+              <div className="text-[9px] text-cyan-400 mb-1">PROACTIVE SUGGESTIONS</div>
+              <div className="text-[10px] text-gray-300">
+                {collaborationManager.getActiveSuggestions('CHAT' as AgentMode).slice(0, 2).map(s => (
+                  <div key={s.id} className="flex items-center gap-1 mb-1">
+                    <span className="text-cyan-400">{s.fromAgent}</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="text-green-400">{s.toAgent}</span>
+                    <span className="text-gray-500 text-[8px] ml-auto">{s.reason.slice(0, 30)}...</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

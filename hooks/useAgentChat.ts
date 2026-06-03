@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
-import { memoryManager, agentOrchestrator, contextManager, taskManager } from '../src/agentic';
+import { memoryManager, agentOrchestrator, contextManager, taskManager, collaborationManager } from '../src/agentic';
 import { loadMessages, saveMessage, loadSettings, saveSettings } from '../src/persistence';
 
 interface UseAgentChatProps {
@@ -245,6 +245,10 @@ ${taskList || 'No tasks defined'}`;
       // Create context session for this conversation
       const session = contextManager.createSession(activeAgent);
       contextManager.addMessage(session.id, { role: 'user', content: currentInput });
+
+      // Analyze message for collaboration signals
+      collaborationManager.analyzeMessage(activeAgent, currentInput);
+      const suggestions = collaborationManager.generateSuggestions(activeAgent);
 
       // Use streaming AI Service
       const stream = sendMessageToAgentStream(
