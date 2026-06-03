@@ -19,6 +19,7 @@ import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
 import { taskManager } from '../src/a2a/TaskManager';
 import { contextManager } from '../src/agentic/ContextManager';
+import { learningManager } from '../src/agentic/LearningManager';
 
 const generateData = () => {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -81,6 +82,9 @@ export const SystemMonitor: React.FC = () => {
     return sessions.length > 0 ? contextManager.getContextStats(sessions[0].id) : null;
   });
 
+  // Learning stats
+  const [learningStats, setLearningStats] = useState(learningManager.getStats());
+
   useEffect(() => {
     // Detect OS
     const platform = navigator.platform.toLowerCase();
@@ -118,6 +122,9 @@ export const SystemMonitor: React.FC = () => {
       if (sessions.length > 0) {
         setContextStats(contextManager.getContextStats(sessions[0].id));
       }
+
+      // Refresh learning stats
+      setLearningStats(learningManager.getStats());
 
     }, 1000);
     return () => clearInterval(interval);
@@ -231,6 +238,28 @@ export const SystemMonitor: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Learning System */}
+        <div className="border-t border-nexus-border pt-2 mt-2">
+          <div className="flex items-center gap-2 text-emerald-500 text-xs mb-1">
+            <CheckCircle size={12} />
+            <span className="font-mono">CONTINUOUS LEARNING</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1 text-[10px]">
+            <span className="text-gray-400">Active lessons: <span className="text-white font-mono">{learningStats.activeLessons}</span></span>
+            <span className="text-gray-400">Total errors: <span className="text-white font-mono">{learningStats.totalEntries}</span></span>
+          </div>
+          {Object.keys(learningStats.byErrorType).length > 0 && (
+            <div className="mt-1 text-[9px] text-gray-500">
+              {Object.entries(learningStats.byErrorType).slice(0, 3).map(([type, count]) => (
+                <div key={type} className="flex justify-between">
+                  <span>{type}:</span>
+                  <span className="text-gray-400">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* CPU Chart */}

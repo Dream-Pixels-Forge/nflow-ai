@@ -1,5 +1,6 @@
 
 import { AgentMode, Task, SuggestionLevel, ChatMode } from "../types";
+import { learningManager } from "../src/agentic/LearningManager";
 
 export const getSystemInstruction = (
   mode: AgentMode, 
@@ -149,5 +150,5 @@ Example response:
       break;
   }
 
-  return `${base} ${roleInstruction} ${orchestratorProtocol} ${contextBlock}`;
+  return `${base} ${roleInstruction} ${orchestratorProtocol} ${contextBlock} ${learningManager.formatForPrompt(mode)}`;
 };

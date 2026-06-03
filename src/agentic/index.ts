@@ -102,6 +102,13 @@ export type {
   ContextConfig
 } from './ContextManager';
 
+export { LearningManager, learningManager } from './LearningManager';
+export type {
+  LearningEntry,
+  LearnedPattern,
+  LearningConfig
+} from './LearningManager';
+
 // A2A Protocol
 export {
   AgentCardManager,
