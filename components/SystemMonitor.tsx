@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
+import { AgentMode } from '../types';
 import { taskManager } from '../src/a2a/TaskManager';
 import { contextManager } from '../src/agentic/ContextManager';
 import { learningManager } from '../src/agentic/LearningManager';

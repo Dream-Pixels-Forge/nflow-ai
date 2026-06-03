@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Trash2
 } from 'lucide-react';
-import { AGENTS, AgentMode, Message } from '../types';
+import { AGENTS, AgentMode, Message, AIProvider } from '../types';
 
 // Icon Mapping to prevent undefined render errors
 const AGENT_ICONS: Record<string, React.ElementType> = {
@@ -37,7 +37,7 @@ interface MessageListProps {
   messages: Message[];
   activeAgent: AgentMode;
   isProcessing: boolean;
-  aiProvider: 'gemini' | 'ollama';
+  aiProvider: AIProvider;
   onDeleteMessage?: (messageId: string) => void;
   onRerunMessage?: (messageId: string) => void;
 }

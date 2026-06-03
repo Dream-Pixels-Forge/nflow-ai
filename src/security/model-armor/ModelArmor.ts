@@ -354,7 +354,7 @@ export class ModelArmor {
     const redacted = filteredContent !== content;
 
     const scanResult = this.createScanResult(content, results, blocked, flagged);
-    scanResult.filteredContent = redacted ? filteredContent : undefined;
+    scanResult.redactedContent = redacted ? filteredContent : undefined;
     scanResult.duration = Date.now() - startTime;
 
     this.addToHistory(scanResult);

@@ -38,7 +38,7 @@ export interface Secret {
   accessLog: Array<{
     timestamp: string;
     accessedBy: string;
-    action: 'read' | 'rotate' | 'revoke';
+    action: 'read' | 'rotate' | 'revoke' | 'create';
   }>;
 }
 
@@ -261,7 +261,7 @@ export class SecretManager {
   /**
    * Log access to a secret
    */
-  private logAccess(secretId: string, accessedBy: string, action: 'read' | 'rotate' | 'revoke'): void {
+  private logAccess(secretId: string, accessedBy: string, action: 'read' | 'rotate' | 'revoke' | 'create'): void {
     const secret = this.secrets.get(secretId);
     if (!secret) return;
 

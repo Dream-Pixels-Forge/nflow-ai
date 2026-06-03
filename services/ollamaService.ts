@@ -156,8 +156,9 @@ export interface OllamaStreamChunk {
   done: boolean;
   suggestedAgent?: AgentMode;
   toolCalls?: Array<{
+    id: string;
     name: string;
-    arguments: Record<string, unknown>;
+    arguments: string;
   }>;
 }
 
@@ -258,11 +259,12 @@ export async function* sendMessageToOllamaStream(
                   const fn = tc.function as Record<string, unknown> | undefined;
                   return typeof fn?.name === "string";
                 })
-                .map((tc) => {
+                .map((tc, idx) => {
                   const fn = tc.function as Record<string, unknown>;
                   return {
+                    id: `ollama-${idx}-${Date.now()}`,
                     name: String(fn.name),
-                    arguments: (fn.arguments as Record<string, unknown>) ?? {},
+                    arguments: typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments ?? {}),
                   };
                 });
               if (toolCalls.length > 0) {

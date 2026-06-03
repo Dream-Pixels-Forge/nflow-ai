@@ -10,7 +10,7 @@ import {
   // Model Armor
   modelArmor,
   ScanResult,
-  FilterRule as ModelArmorFilterRule,
+  ModelArmorFilterRule,
   
   // Secret Manager
   secretManager,
@@ -55,9 +55,11 @@ export interface AdvancedSecurityState {
   secrets: Omit<Secret, 'value' | 'accessLog'>[];
   secretStats: {
     totalSecrets: number;
-    activeSecrets: number;
+    byType: Record<SecretType, number>;
+    byStatus: Record<string, number>;
     expiringSoon: number;
     needingRotation: number;
+    totalAccesses: number;
   };
   
   // Circuit Breaker
@@ -65,9 +67,10 @@ export interface AdvancedSecurityState {
   openCircuitBreakers: number;
   circuitBreakerStats: {
     totalCircuitBreakers: number;
-    open: number;
-    closed: number;
-    halfOpen: number;
+    byState: Record<string, number>;
+    totalFailures: number;
+    totalSuccesses: number;
+    averageSnapshots: number;
   };
   
   // System Prompt Anchor
@@ -259,7 +262,7 @@ export function useAdvancedSecurity(): [AdvancedSecurityState, AdvancedSecurityA
     secrets,
     secretStats,
     circuitBreakers,
-    openCircuitBreakers: circuitBreakerStats.open,
+    openCircuitBreakers: circuitBreakerStats.byState?.['open'] || 0,
     circuitBreakerStats,
     anchorRules,
     anchorStats,

@@ -131,12 +131,14 @@ export default function App() {
       // Register all NexusFlow agents
       Object.values(AGENTS).forEach(agentDef => {
         agentCardManager.createAgentCard({
-          id: agentDef.id,
           name: agentDef.name,
           description: agentDef.description,
           url: `local://nexusflow/${agentDef.id}`,
-          capabilities: [agentDef.id.toLowerCase(), 'text-generation', 'code-generation'],
-          modalities: ['text'],
+          capabilities: [
+            { name: agentDef.id.toLowerCase(), description: `${agentDef.name} agent`, inputTypes: ['text'], outputTypes: ['text'], maxConcurrentTasks: 1 },
+            { name: 'text-generation', description: 'Generate text responses', inputTypes: ['text'], outputTypes: ['text'], maxConcurrentTasks: 5 }
+          ],
+          supportedModalities: ['text'],
           version: '1.0.0'
         });
       });

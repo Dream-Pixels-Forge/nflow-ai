@@ -14,7 +14,9 @@ import {
   Image,
   File,
   Command,
-  ChevronUp
+  ChevronUp,
+  MessageSquare,
+  Code
 } from 'lucide-react';
 import { AGENTS, AgentMode, AppSettings, AIProvider, ChatMode, PROVIDER_NAMES } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
