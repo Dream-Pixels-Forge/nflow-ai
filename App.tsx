@@ -360,6 +360,26 @@ export default function App() {
             transitionTarget={transitionTarget}
             onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
+            onFilesAttached={(files) => {
+              // Add attached files to RAG context
+              const reader = new FileReader();
+              files.forEach(file => {
+                reader.onload = (e) => {
+                  const content = e.target?.result as string;
+                  if (content) {
+                    setToolState(prev => ({
+                      ...prev,
+                      rag: {
+                        ...prev.rag,
+                        content: [...prev.rag.content, `FILE: ${file.name}\nCONTENT:\n${content}`],
+                        active: true
+                      }
+                    }));
+                  }
+                };
+                reader.readAsText(file);
+              });
+            }}
           />
 
         </div>
