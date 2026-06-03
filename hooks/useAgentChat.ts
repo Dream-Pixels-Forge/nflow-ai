@@ -1,13 +1,15 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
+import { memoryManager } from '../src/agentic';
 
 interface UseAgentChatProps {
   activeAgent: AgentMode;
   toolState: ToolState;
   settings: AppSettings;
   tasks: Task[];
+  virtualFiles: VirtualFile[];
   onTasksUpdate: (tasks: Task[]) => void;
   onFilesUpdate: (files: VirtualFile[]) => void;
 }
@@ -40,6 +42,7 @@ export const useAgentChat = ({
   toolState,
   settings,
   tasks,
+  virtualFiles,
   onTasksUpdate,
   onFilesUpdate
 }: UseAgentChatProps): UseAgentChatReturn => {
@@ -47,6 +50,21 @@ export const useAgentChat = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<AgentMode | null>(null);
   const [lastAgentResume, setLastAgentResume] = useState('');
+  
+  // Update project context whenever files or tasks change
+  useEffect(() => {
+    const fileList = virtualFiles.map(f => `- ${f.name} (${f.language})`).join('\n');
+    const taskList = tasks.map(t => `- [${t.status}] ${t.title}`).join('\n');
+    
+    const projectSummary = `PROJECT CONTEXT:
+Virtual Files:
+${fileList || 'No files loaded'}
+
+Active Tasks:
+${taskList || 'No tasks defined'}`;
+    
+    setLastAgentResume(projectSummary);
+  }, [virtualFiles, tasks]);
   
   // State: Independent Histories for each Agent (The "Project Folder" Structure)
   const [agentHistories, setAgentHistories] = useState<Record<AgentMode, Message[]>>(() => {
@@ -87,6 +105,16 @@ export const useAgentChat = ({
 
      if (newTasks.length > 0) {
        onTasksUpdate([...tasks, ...newTasks]);
+       
+       // Save to memory
+       memoryManager.addMemory({
+         type: 'decision',
+         content: `New tasks created: ${newTasks.map(t => t.title).join(', ')}`,
+         tags: ['tasks', 'planning'],
+         importance: 'medium',
+         metadata: { tasks: newTasks.map(t => ({ id: t.id, title: t.title, status: t.status })) },
+         relatedEntries: []
+       });
      }
   };
 
@@ -111,6 +139,16 @@ export const useAgentChat = ({
     
     if (newFiles.length > 0) {
         onFilesUpdate(newFiles);
+        
+        // Save to memory
+        memoryManager.addMemory({
+          type: 'success',
+          content: `New files generated: ${newFiles.map(f => f.name).join(', ')}`,
+          tags: ['files', 'code-generation'],
+          importance: 'medium',
+          metadata: { files: newFiles.map(f => ({ name: f.name, language: f.language })) },
+          relatedEntries: []
+        });
     }
   };
 

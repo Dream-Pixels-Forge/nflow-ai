@@ -18,6 +18,7 @@ import { InputArea } from './components/InputArea';
 import { RightPanel } from './components/RightPanel';
 import { useAgentChat } from './hooks/useAgentChat';
 import { useCommandParser } from './hooks/useCommandParser';
+import { memoryManager, agentCardManager } from './src/agentic';
 
 // Helper to cycle enum
 const getNextAgent = (current: AgentMode): AgentMode => {
@@ -75,6 +76,58 @@ export default function App() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Initialize memory and A2A agents on startup
+  useEffect(() => {
+    // Initialize memory with project context
+    const stats = memoryManager.getStats();
+    if (stats.totalEntries === 0) {
+      // Add initial project memories
+      memoryManager.addMemory({
+        type: 'decision',
+        content: 'NexusFlow project initialized with default files and settings',
+        tags: ['project', 'setup', 'initialization'],
+        importance: 'medium',
+        metadata: { files: INITIAL_FILES.map(f => f.name) },
+        relatedEntries: []
+      });
+      
+      memoryManager.addMemory({
+        type: 'preference',
+        content: 'Default AI provider: Gemini, Suggestion level: medium',
+        tags: ['settings', 'configuration'],
+        importance: 'low',
+        metadata: {},
+        relatedEntries: []
+      });
+      
+      memoryManager.addMemory({
+        type: 'learning',
+        content: 'Project structure: package.json, README.md, src/index.ts',
+        tags: ['files', 'structure'],
+        importance: 'medium',
+        metadata: {},
+        relatedEntries: []
+      });
+    }
+    
+    // Register A2A agents on startup
+    const existingAgents = agentCardManager.getRegisteredAgents();
+    if (existingAgents.length === 0) {
+      // Register all NexusFlow agents
+      Object.values(AGENTS).forEach(agentDef => {
+        agentCardManager.createAgentCard({
+          id: agentDef.id,
+          name: agentDef.name,
+          description: agentDef.description,
+          url: `local://nexusflow/${agentDef.id}`,
+          capabilities: [agentDef.id.toLowerCase(), 'text-generation', 'code-generation'],
+          modalities: ['text'],
+          version: '1.0.0'
+        });
+      });
+    }
+  }, []);
+
   // Use the new hooks
   const {
     input,
@@ -91,6 +144,7 @@ export default function App() {
     toolState,
     settings,
     tasks,
+    virtualFiles,
     onTasksUpdate: setTasks,
     onFilesUpdate: (newFiles) => {
       setVirtualFiles(prev => {
