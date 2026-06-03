@@ -24,7 +24,8 @@ export const sendMessageToGeminiStream = async function* (
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
   apiKey: string = '',
-  chatMode: ChatMode = 'agent'
+  chatMode: ChatMode = 'agent',
+  model: string = 'gemini-2.0-flash'
 ): AsyncGenerator<StreamChunk> {
   if (!apiKey) {
     throw new Error("API Key not found. Set your Gemini API key in Settings, or switch to Ollama.");
@@ -67,7 +68,7 @@ export const sendMessageToGeminiStream = async function* (
 
   try {
     const response = await ai.models.generateContentStream({
-      model: "gemini-2.0-flash",
+      model: model,
       contents: recentHistory,
       config: {
         systemInstruction: systemInstruction,

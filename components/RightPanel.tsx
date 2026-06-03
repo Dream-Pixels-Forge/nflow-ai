@@ -19,6 +19,7 @@ interface RightPanelProps {
   messages?: Message[];
   activeAgent?: AgentMode;
   isProcessing?: boolean;
+  onAdaptiveAction?: (action: string, agent: string) => void;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -32,7 +33,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onToggle,
   messages,
   activeAgent,
-  isProcessing
+  isProcessing,
+  onAdaptiveAction,
 }) => {
   if (!isOpen) return null;
 
@@ -121,7 +123,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {rightPanelTab === 'adaptive' && (
           <AdaptivePanel 
             activeAgent={activeAgent || 'CHAT' as AgentMode} 
-            isProcessing={isProcessing || false} 
+            isProcessing={isProcessing || false}
+            onAction={onAdaptiveAction}
           />
         )}
       </div>

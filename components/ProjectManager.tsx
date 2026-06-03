@@ -8,9 +8,11 @@ interface ProjectManagerProps {
   tasks: Task[];
   agentHistories: any; 
   files: VirtualFile[]; // Receive dynamic files
+  onCommit?: (committedFiles: string[]) => void;
+  onMerge?: () => void;
 }
 
-export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, agentHistories, files }) => {
+export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, agentHistories, files, onCommit, onMerge }) => {
   const [activeTab, setActiveTab] = useState<'explorer' | 'git'>('git');
   const [selectedFile, setSelectedFile] = useState<VirtualFile | null>(files[0] || null);
   const [gitState, setGitState] = useState<GitState>({
@@ -46,6 +48,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, 
   const handleCommit = () => {
     if (!commitMsg) return;
     
+    const committedFiles = gitState.pendingChanges.map(c => c.name);
+    
     const newCommit = {
       id: Math.random().toString(16).substr(2, 7),
       message: commitMsg,
@@ -55,9 +59,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, 
     setGitState(prev => ({
       ...prev,
       commitHistory: [newCommit, ...prev.commitHistory],
-      pendingChanges: [] // In a real app, we'd mark files as 'unmodified' here via a callback to parent
+      pendingChanges: []
     }));
     setCommitMsg('');
+    onCommit?.(committedFiles);
   };
 
   const renderFileIcon = (name: string) => {
@@ -228,6 +233,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, 
                         
                         <button 
                             disabled={!canMerge}
+                            onClick={() => { if (canMerge) { handleCommit(); onMerge?.(); } }}
                             className={`
                                 px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2 transition-all
                                 ${canMerge 

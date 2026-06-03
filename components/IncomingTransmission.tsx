@@ -10,6 +10,7 @@ interface IncomingTransmissionProps {
 export const IncomingTransmission: React.FC<IncomingTransmissionProps> = ({ targetAgent }) => {
   const agentConfig = AGENTS[targetAgent];
   const [decodedName, setDecodedName] = useState('');
+  const [imgError, setImgError] = useState(false);
   const fullName = agentConfig.name;
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
 
@@ -40,7 +41,16 @@ export const IncomingTransmission: React.FC<IncomingTransmissionProps> = ({ targ
 
   return (
     <div className="absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExODF5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE1YN7aQf3rfWVE/giphy.gif')] opacity-5 pointer-events-none bg-cover"></div>
+      {imgError ? (
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-purple-900/10 via-black to-cyan-900/10" />
+      ) : (
+        <img
+          src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExODF5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eXJ5eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE1YN7aQf3rfWVE/giphy.gif"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-5 pointer-events-none"
+          onError={() => setImgError(true)}
+        />
+      )}
       
       {/* Central Hud */}
       <div className="relative z-10 flex flex-col items-center gap-12 w-full max-w-md p-8">

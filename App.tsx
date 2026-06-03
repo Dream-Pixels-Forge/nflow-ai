@@ -335,6 +335,17 @@ export default function App() {
               tasks={tasks}
               agentHistories={agentHistories}
               files={virtualFiles}
+              onCommit={(committedFiles) => {
+                setVirtualFiles(prev => prev.map(f => 
+                  committedFiles.includes(f.name) 
+                    ? { ...f, status: 'unmodified' as const }
+                    : f
+                ));
+              }}
+              onMerge={() => {
+                // Mark all files as unmodified after merge
+                setVirtualFiles(prev => prev.map(f => ({ ...f, status: 'unmodified' as const })));
+              }}
           />
         )}
 
@@ -482,6 +493,22 @@ export default function App() {
           messages={currentMessages}
           activeAgent={activeAgent}
           isProcessing={isProcessing}
+          onAdaptiveAction={(action, agent) => {
+            switch (action) {
+              case 'Route to specialist':
+                // Show notification that routing is available
+                console.log(`Routing to specialist from ${agent}`);
+                break;
+              case 'Create task':
+                setShowTaskDashboard(true);
+                break;
+              case 'View status':
+                setRightPanelTab('telemetry');
+                break;
+              default:
+                console.log(`Adaptive action: ${action} from ${agent}`);
+            }
+          }}
         />
 
         {/* Undo Delete Toast */}

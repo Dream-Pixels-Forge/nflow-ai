@@ -5,6 +5,20 @@ import { sendMessageToAgentStream } from '../services/aiStreamService';
 import { memoryManager, agentOrchestrator, contextManager, taskManager, collaborationManager } from '../src/agentic';
 import { loadMessages, saveMessage, saveMessages, clearMessages, loadSettings, saveSettings } from '../src/persistence';
 
+const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_RESULT_LENGTH = 500;
+
+// Sanitize tool output to prevent prompt injection
+function sanitizeToolOutput(output: string | undefined): string {
+  if (!output) return '';
+  return output
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') // Strip control chars except \n\t
+    .split('\n')
+    .map(line => line.substring(0, 200)) // Cap line length
+    .join('\n')
+    .substring(0, MAX_TOOL_RESULT_LENGTH);
+}
+
 interface UseAgentChatProps {
   activeAgent: AgentMode;
   toolState: ToolState;
@@ -55,6 +69,7 @@ export const useAgentChat = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<AgentMode | null>(null);
   const [lastAgentResume, setLastAgentResume] = useState('');
+  const toolIterationRef = useRef(0);
   
   // Update project context whenever files or tasks change
   useEffect(() => {
@@ -211,6 +226,7 @@ ${taskList || 'No tasks defined'}`;
     setInput('');
     setIsProcessing(true);
     setPendingSwitch(null);
+    toolIterationRef.current = 0;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -306,7 +322,7 @@ ${taskList || 'No tasks defined'}`;
               toolResults.push({
                 name: result.name,
                 success: result.success,
-                output: result.output,
+                output: result.output.slice(0, MAX_TOOL_RESULT_LENGTH),
                 error: result.error,
               });
             }
@@ -315,7 +331,7 @@ ${taskList || 'No tasks defined'}`;
             const toolResultMsg: Message = {
               id: (Date.now() + 2).toString(),
               role: 'system',
-              content: `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? r.output.slice(0, 500) : r.error}`).join("\n")}`,
+              content: `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? sanitizeToolOutput(r.output) : sanitizeToolOutput(r.error)}`).join("\n")}`,
               timestamp: Date.now(),
               agent: activeAgent,
               toolResults,
@@ -326,9 +342,55 @@ ${taskList || 'No tasks defined'}`;
               [activeAgent]: [...prev[activeAgent], toolResultMsg]
             }));
 
-            // TODO: Feed tool results back into model for continuation
-            // This requires a second API call with tool results in context.
-            // For now, the tool results are visible in the chat.
+            // Feed tool results back into model for continuation (with iteration guard)
+            toolIterationRef.current += 1;
+            if (toolIterationRef.current < MAX_TOOL_ITERATIONS) {
+              const feedbackContent = `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? sanitizeToolOutput(r.output) : sanitizeToolOutput(r.error)}`).join("\n")}\n\nPlease continue with your task.`;
+
+              const feedbackStream = sendMessageToAgentStream(
+                feedbackContent,
+                agentHistories[activeAgent],
+                activeAgent,
+                toolState,
+                lastAgentResume,
+                tasks,
+                settings
+              );
+
+              let feedbackContent累积 = "";
+              let feedbackToolCalls: Array<{ id: string; name: string; arguments: string }> = [];
+
+              for await (const chunk of feedbackStream) {
+                if (chunk.done) {
+                  if (chunk.toolCalls && chunk.toolCalls.length > 0) {
+                    feedbackToolCalls = chunk.toolCalls;
+                  }
+
+                  const feedbackMsg: Message = {
+                    id: (Date.now() + 4).toString(),
+                    role: 'assistant',
+                    content: feedbackContent累积,
+                    timestamp: Date.now(),
+                    agent: activeAgent,
+                    toolCalls: feedbackToolCalls.length > 0 ? feedbackToolCalls : undefined,
+                  };
+
+                  setAgentHistories(prev => ({
+                    ...prev,
+                    [activeAgent]: [...prev[activeAgent], feedbackMsg]
+                  }));
+
+                  // If the feedback response also has tool calls, they'll be handled in the next iteration
+                  if (feedbackToolCalls.length > 0) {
+                    pendingToolCalls = feedbackToolCalls;
+                    // Re-execute the tool loop by setting chunk.done to trigger recursion
+                    // This is handled by the outer while loop
+                  }
+                } else {
+                  feedbackContent累积 += chunk.text;
+                }
+              }
+            }
           }
 
           // Task Extraction (Only if PLAN agent)

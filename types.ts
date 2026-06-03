@@ -77,6 +77,7 @@ export interface AppSettings {
   aiProvider: AIProvider;
   // Gemini Settings
   geminiApiKey?: string;
+  geminiModel?: string;
   // Ollama Settings
   ollamaUrl: string;
   ollamaGeneralModel: string;

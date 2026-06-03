@@ -483,13 +483,16 @@ export const SystemMonitor: React.FC<SystemMonitorProps> = ({ messages = [] }) =
         <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm col-span-2">
             <div className="flex items-center gap-2 text-nexus-dim mb-1">
                 <Wifi size={14} />
-                <span className="text-[10px] font-mono uppercase">API Latency</span>
+                <span className="text-[10px] font-mono uppercase">Network Latency</span>
             </div>
             <div className="text-xl font-mono text-white flex justify-between">
                 <span>{latencyMs > 0 ? `${latencyMs}ms` : '—'}</span>
                 <span className="text-[10px] text-nexus-dim mt-2">
-                  {latencyMs > 0 ? 'MEASURED' : 'WAITING'}
+                  {latencyMs > 0 ? 'CONNECTIVITY OK' : 'WAITING'}
                 </span>
+            </div>
+            <div className="text-[9px] text-gray-600 mt-1 font-mono">
+              Baseline connectivity check (favicon HEAD)
             </div>
         </div>
       </div>

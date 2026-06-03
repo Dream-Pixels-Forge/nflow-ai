@@ -17,7 +17,8 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  Brain
+  Brain,
+  Loader2
 } from 'lucide-react';
 import { ToolState, Message } from '../types';
 import { useMCP } from '../hooks/useMCP';
@@ -33,6 +34,9 @@ interface ToolsPanelProps {
 export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState, messages }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [fetchResult, setFetchResult] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // A2A, MCP, Memory hooks
   const [mcpState, mcpActions] = useMCP();
@@ -187,6 +191,80 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState,
               className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 font-mono text-gray-300 focus:outline-none focus:border-nexus-accent"
               placeholder="https://api.example.com/v1..."
             />
+            <button
+              onClick={async () => {
+                const url = toolState.fetch.targetUrl.trim();
+                if (!url) return;
+                // SSRF protection: block internal IPs and non-http protocols
+                try {
+                  const parsed = new URL(url);
+                  const hostname = parsed.hostname;
+                  const isInternal = (
+                    hostname === 'localhost' ||
+                    hostname === '127.0.0.1' ||
+                    hostname === '::1' ||
+                    /^10\./.test(hostname) ||
+                    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+                    /^192\.168\./.test(hostname) ||
+                    /^169\.254\./.test(hostname)
+                  );
+                  if (isInternal) {
+                    setFetchError('Blocked: Cannot fetch internal/private network addresses');
+                    return;
+                  }
+                  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                    setFetchError('Blocked: Only HTTP and HTTPS URLs are allowed');
+                    return;
+                  }
+                } catch {
+                  setFetchError('Invalid URL format');
+                  return;
+                }
+                setFetchLoading(true);
+                setFetchResult(null);
+                setFetchError(null);
+                try {
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 10000);
+                  const response = await fetch(url, { signal: controller.signal });
+                  clearTimeout(timeoutId);
+                  if (!response.ok) {
+                    setFetchError(`HTTP ${response.status}: ${response.statusText}`);
+                  } else {
+                    const text = await response.text();
+                    setFetchResult(text.substring(0, 2000) + (text.length > 2000 ? '\n... (truncated)' : ''));
+                  }
+                } catch (err: any) {
+                  setFetchError(err.name === 'AbortError' ? 'Request timed out (10s)' : err.message || 'Fetch failed');
+                } finally {
+                  setFetchLoading(false);
+                }
+              }}
+              disabled={fetchLoading || !toolState.fetch.targetUrl.trim()}
+              className="w-full flex items-center justify-center gap-2 bg-nexus-900 hover:bg-nexus-800 border border-nexus-border text-xs py-2 text-nexus-dim hover:text-nexus-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {fetchLoading ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>FETCHING...</span>
+                </>
+              ) : (
+                <>
+                  <Globe size={12} />
+                  <span>FETCH</span>
+                </>
+              )}
+            </button>
+            {fetchError && (
+              <div className="text-[10px] text-red-400 bg-red-900/20 border border-red-500/30 p-2 rounded">
+                {fetchError}
+              </div>
+            )}
+            {fetchResult && (
+              <div className="max-h-32 overflow-y-auto custom-scrollbar border border-nexus-dim/20 p-2 bg-nexus-900/50">
+                <pre className="text-[9px] text-gray-400 whitespace-pre-wrap break-words font-mono">{fetchResult}</pre>
+              </div>
+            )}
         </div>
       )
     },

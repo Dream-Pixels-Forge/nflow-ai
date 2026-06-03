@@ -29,6 +29,7 @@ import {
 interface AdaptivePanelProps {
   activeAgent: AgentMode;
   isProcessing: boolean;
+  onAction?: (action: string, agent: string) => void;
 }
 
 interface AgentContext {
@@ -108,7 +109,8 @@ const AGENT_PANELS: Record<AgentMode, {
 
 export const AdaptivePanel: React.FC<AdaptivePanelProps> = ({ 
   activeAgent, 
-  isProcessing 
+  isProcessing,
+  onAction
 }) => {
   const [agenticState] = useAgenticSystems();
   const { agentStates } = agenticState;
@@ -164,7 +166,13 @@ export const AdaptivePanel: React.FC<AdaptivePanelProps> = ({
           <div key={i} className="bg-nexus-800/50 p-2 rounded-sm text-center">
             <div className="text-[8px] text-gray-500 mb-1">{metric}</div>
             <div className="text-sm font-mono text-white">
-              {i === 0 ? agentStates.size : i === 1 ? '12' : 'OK'}
+              {i === 0
+                ? agentStates.size
+                : i === 1
+                  ? agenticState.activeSessions?.length ?? 0
+                  : agenticState.isHalted
+                    ? 'DEGRADED'
+                    : 'OK'}
             </div>
           </div>
         ))}
@@ -177,6 +185,7 @@ export const AdaptivePanel: React.FC<AdaptivePanelProps> = ({
           {panelConfig.actions.map((action, i) => (
             <button
               key={i}
+              onClick={() => onAction?.(action, activeAgent)}
               className="px-2 py-1 text-[9px] font-mono bg-nexus-800 hover:bg-nexus-700 
                          border border-nexus-border rounded-sm transition-colors
                          text-gray-400 hover:text-white"

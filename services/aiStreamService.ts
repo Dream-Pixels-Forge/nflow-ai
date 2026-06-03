@@ -32,7 +32,7 @@ export const sendMessageToAgentStream = async function* (
   switch (settings.aiProvider) {
     case 'gemini':
       yield* sendMessageToGeminiStream(
-        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, settings.geminiApiKey || '', settings.chatMode
+        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, settings.geminiApiKey || '', settings.chatMode, settings.geminiModel || 'gemini-2.0-flash'
       );
       break;
 

@@ -87,7 +87,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<any>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const providerDropdownRef = useRef<HTMLDivElement>(null);
@@ -249,92 +248,65 @@ export const InputArea: React.FC<InputAreaProps> = ({
     }
   };
 
+  // Check for Web Speech API support
+  const SpeechRecognitionAPI = typeof window !== 'undefined'
+    ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    : null;
+  const isSpeechRecognitionSupported = !!SpeechRecognitionAPI;
+
   const startRecording = async () => {
-    // Check for Web Speech API support
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      // Fallback: Use MediaRecorder for audio recording
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        const audioChunks: Blob[] = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          // You could send this to a speech-to-text API
-          console.log('Audio recorded:', audioBlob);
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        mediaRecorderRef.current = mediaRecorder;
-        mediaRecorder.start();
-        setIsRecording(true);
-        setRecordingTime(0);
-
-        recordingIntervalRef.current = setInterval(() => {
-          setRecordingTime(prev => prev + 1);
-        }, 1000);
-      } catch (error) {
-        console.error('Microphone access denied:', error);
-        alert('Microphone access denied. Please allow microphone access to use voice input.');
-      }
-    } else {
-      // Use Web Speech API for speech-to-text
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      let finalTranscript = input;
-
-      recognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-            setInput(finalTranscript.trim());
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-        if (recordingIntervalRef.current) {
-          clearInterval(recordingIntervalRef.current);
-        }
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
+    if (!SpeechRecognitionAPI) {
+      // Speech recognition not available — do nothing (button should be disabled)
+      return;
     }
+
+    // Use Web Speech API for speech-to-text
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = input;
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+          setInput(finalTranscript.trim());
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setRecordingTime(0);
+
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1);
+    }, 1000);
   };
 
   const stopRecording = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
     }
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
@@ -548,12 +520,17 @@ export const InputArea: React.FC<InputAreaProps> = ({
             {/* Microphone Button */}
             <button
               onClick={toggleRecording}
+              disabled={!isSpeechRecognitionSupported}
               className={`p-2 rounded-sm transition-colors ${
                 isRecording 
                   ? 'bg-red-600 text-white animate-pulse' 
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-zinc-800'
+                  : isSpeechRecognitionSupported
+                    ? 'text-gray-500 hover:text-gray-300 hover:bg-zinc-800'
+                    : 'text-gray-600 cursor-not-allowed opacity-50'
               }`}
-              title={isRecording ? 'Stop recording' : 'Voice input'}
+              title={isSpeechRecognitionSupported
+                ? (isRecording ? 'Stop recording' : 'Voice input')
+                : 'Voice input requires Chrome or Edge browser'}
             >
               {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
@@ -675,7 +652,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     {loadingModels ? 'Loading...' :
                      settings.aiProvider === 'ollama' ? (settings.ollamaGeneralModel || 'Select model') :
                      settings.aiProvider === 'openrouter' ? (settings.openrouterModel?.split('/').pop() || 'Select model') :
-                     settings.aiProvider === 'gemini' ? 'gemini-2.0-flash' :
+                     settings.aiProvider === 'gemini' ? (settings.geminiModel || 'gemini-2.0-flash') :
                      settings.nvidiaModel?.split('/').pop() || 'Select model'}
                   </span>
                   <ChevronUp size={10} className={`text-gray-500 transition-transform flex-shrink-0 ${showModelDropdown ? 'rotate-180' : ''}`} />
@@ -732,12 +709,17 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         <button
                           key={model}
                           onClick={() => {
-                            // Gemini uses fixed model names, no setting needed
+                            onSettingsChange?.({ geminiModel: model });
                             setShowModelDropdown(false);
                           }}
-                          className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left"
+                          className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
+                            settings.geminiModel === model ? 'bg-zinc-700' : ''
+                          }`}
                         >
                           <span className="text-xs text-gray-300">{model}</span>
+                          {settings.geminiModel === model && (
+                            <CheckCircle size={12} className="text-green-500 ml-auto flex-shrink-0" />
+                          )}
                         </button>
                       ))
                     ) : (
@@ -771,7 +753,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
           <div className="flex items-center gap-2">
             {/* Keyboard Shortcut Hint */}
             <span className="text-xs text-gray-600 hidden sm:block">
-              ⌘ Enter
+              Enter
             </span>
 
             {/* Send Button */}
