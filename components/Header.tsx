@@ -5,7 +5,9 @@ import {
   Settings as SettingsIcon,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Menu,
+  StopCircle
 } from 'lucide-react';
 import { AGENTS, AgentMode, VirtualFile } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
@@ -34,13 +36,17 @@ interface HeaderProps {
   virtualFiles: VirtualFile[];
   onShowSettings: () => void;
   onShowProjectManager: () => void;
+  onToggleSidebar?: () => void;
+  onEmergencyStop?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeAgent,
   virtualFiles,
   onShowSettings,
-  onShowProjectManager
+  onShowProjectManager,
+  onToggleSidebar,
+  onEmergencyStop
 }) => {
   // Agentic systems
   const [agenticState] = useAgenticSystems();
@@ -52,54 +58,55 @@ export const Header: React.FC<HeaderProps> = ({
   const phaseConfig = PHASE_CONFIGS[currentPhase];
 
   return (
-    <div className="h-12 border-b border-nexus-border flex items-center justify-between px-6 bg-nexus-900/80 backdrop-blur">
+    <div className="h-12 border-b border-nexus-border flex items-center justify-between px-4 md:px-6 bg-nexus-900/80 backdrop-blur">
       <div className="flex items-center gap-4">
+         {/* Mobile Menu Button */}
+         {onToggleSidebar && (
+           <button
+             onClick={onToggleSidebar}
+             className="p-2 text-gray-400 hover:text-white hover:bg-nexus-800 rounded-sm transition-colors md:hidden"
+           >
+             <Menu size={18} />
+           </button>
+         )}
          <span className={`text-xs font-bold px-2 py-1 rounded ${AGENTS[activeAgent].color.replace('text-', 'bg-').replace('400','900').replace('500','900')} bg-opacity-20 border border-opacity-30 ${AGENTS[activeAgent].color.replace('text-', 'border-')}`}>
             <span className="opacity-50">./agents/</span>{activeAgent}
          </span>
-         <span className="text-xs text-nexus-dim">/// {AGENTS[activeAgent].description}</span>
+         <span className="text-xs text-nexus-dim hidden lg:inline">/// {AGENTS[activeAgent].description}</span>
          
          {/* Phase Indicator */}
          <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-mono ${getPhaseColor(currentPhase)}`}>
             <span className="opacity-70">PHASE:</span>
             <span className="font-bold">{currentPhase}</span>
-            <span className="opacity-70">({phaseConfig.name})</span>
+            <span className="opacity-70 hidden sm:inline">({phaseConfig.name})</span>
          </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Gate Status */}
-        {lastGateStatus && (
-          <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono ${
-            lastGateStatus === 'PASS' 
-              ? 'bg-green-900/50 border border-green-500/50 text-green-400'
-              : 'bg-red-900/50 border border-red-500/50 text-red-400'
-          }`}>
-            {lastGateStatus === 'PASS' ? <CheckCircle size={10} /> : <XCircle size={10} />}
-            <span>GATE: {lastGateStatus}</span>
-          </div>
-        )}
-
-        {/* Drift Warning */}
-        {driftEvents.length > 0 && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-900/50 border border-yellow-500/50 text-yellow-400 text-[10px] font-mono">
-            <AlertTriangle size={10} />
-            <span>DRIFT: {driftEvents.length}</span>
-          </div>
-        )}
-
-        {/* System Halt */}
-        {isHalted && (
+      <div className="flex items-center gap-3">
+        {/* Consolidated Status Indicator */}
+        {isHalted ? (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-900/50 border border-red-500/50 text-red-400 text-[10px] font-mono animate-pulse">
             <XCircle size={10} />
-            <span>HALTED</span>
+            <span>LOCKDOWN</span>
           </div>
-        )}
-
-        <div className="flex items-center gap-2 text-nexus-dim text-xs">
-           <ShieldCheck size={14} className={isHalted ? 'text-red-500' : 'text-nexus-accent'} />
-           <span>{isHalted ? 'LOCKDOWN' : 'SECURE ENCLAVE'}</span>
-        </div>
+        ) : lastGateStatus || driftEvents.length > 0 ? (
+          <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono ${
+            lastGateStatus === 'PASS' && driftEvents.length === 0
+              ? 'bg-green-900/50 border border-green-500/50 text-green-400'
+              : lastGateStatus === 'FAIL' || driftEvents.length > 0
+                ? 'bg-yellow-900/50 border border-yellow-500/50 text-yellow-400'
+                : 'bg-nexus-800 border border-nexus-border text-gray-400'
+          }`}>
+            {lastGateStatus === 'PASS' && driftEvents.length === 0 
+              ? <CheckCircle size={10} /> 
+              : <AlertTriangle size={10} />}
+            <span>
+              {lastGateStatus === 'PASS' && driftEvents.length === 0 ? 'ALL CLEAR' : 
+               lastGateStatus === 'FAIL' ? 'GATE FAIL' :
+               `DRIFT: ${driftEvents.length}`}
+            </span>
+          </div>
+        ) : null}
 
         {/* VSCode Bridge Button */}
         <button
@@ -110,6 +117,17 @@ export const Header: React.FC<HeaderProps> = ({
           <Laptop size={16} />
           <span className="text-xs font-bold hidden md:inline">VSCODE BRIDGE</span>
         </button>
+
+        {/* Emergency Stop - Persistent */}
+        {onEmergencyStop && (
+          <button
+            onClick={onEmergencyStop}
+            className="text-red-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-900/30 border border-transparent hover:border-red-800/50"
+            title="Emergency Stop (Ctrl+Shift+X)"
+          >
+            <StopCircle size={16} />
+          </button>
+        )}
 
         <button
           onClick={onShowSettings}

@@ -147,6 +147,25 @@ export class LoopAgent {
             if (agent.afterExecute) {
               await agent.afterExecute(output, execution.context);
             }
+            // Validation gate
+            if (agent.validate) {
+              const isValid = await agent.validate(output, execution.context);
+              if (!isValid) {
+                agentResult.status = 'failed';
+                agentResult.error = `Validation failed for agent "${agent.name}"`;
+                agentResult.completedAt = new Date().toISOString();
+                agentResult.duration = new Date(agentResult.completedAt).getTime() - new Date(agentResult.startedAt).getTime();
+
+                if (!this.config.continueOnError) {
+                  execution.status = 'failed';
+                  execution.error = agentResult.error;
+                  execution.completedAt = new Date().toISOString();
+                  execution.totalDuration = new Date(execution.completedAt).getTime() - new Date(execution.startedAt).getTime();
+                  return execution;
+                }
+                continue;
+              }
+            }
 
             // Update result
             agentResult.status = 'completed';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Volume2, VolumeX, MousePointer2, Zap, Gauge, Server, Cloud, Database, RefreshCw, AlertTriangle, CheckCircle2, Wifi, Cpu, Globe, Terminal } from 'lucide-react';
+import { Settings, X, Volume2, VolumeX, MousePointer2, Zap, Gauge, Server, Cloud, Database, RefreshCw, AlertTriangle, CheckCircle2, Wifi, Cpu, Globe, Github } from 'lucide-react';
 import { AppSettings, SuggestionLevel, AIProvider, PROVIDER_NAMES, PROVIDER_DESCRIPTIONS } from '../types';
 import { getOllamaModels } from '../services/ollamaService';
 
@@ -23,16 +23,14 @@ const PROVIDER_ICONS: Record<AIProvider, React.ElementType> = {
   gemini: Cloud,
   ollama: Database,
   openrouter: Globe,
-  nvidia: Cpu,
-  opencode: Terminal
+  nvidia: Cpu
 };
 
 const PROVIDER_COLORS: Record<AIProvider, string> = {
   gemini: 'nexus-accent',
   ollama: 'orange-500',
   openrouter: 'blue-400',
-  nvidia: 'green-500',
-  opencode: 'purple-400'
+  nvidia: 'green-500'
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate, onClose }) => {
@@ -101,8 +99,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
         return renderOpenRouterSettings();
       case 'nvidia':
         return renderNVIDIASettings();
-      case 'opencode':
-        return renderOpenCodeSettings();
       case 'gemini':
       default:
         return renderGeminiSettings();
@@ -291,42 +287,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
     </div>
   );
 
-  const renderOpenCodeSettings = () => (
-    <div className="p-4 rounded bg-nexus-800/30 border border-purple-400/30 space-y-4 animate-fade-in">
-      <div className="text-[10px] text-purple-400 uppercase font-bold">OpenCode Configuration</div>
-      <div className="space-y-1">
-        <label className="text-[10px] text-nexus-dim uppercase font-bold">API Key</label>
-        <input 
-          type="password"
-          value={settings.opencodeApiKey || ''}
-          onChange={(e) => onUpdate({ ...settings, opencodeApiKey: e.target.value })}
-          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
-          placeholder="Enter your OpenCode API key"
-        />
-      </div>
-      <div className="space-y-1">
-        <label className="text-[10px] text-nexus-dim uppercase font-bold">Model</label>
-        <select 
-          value={settings.opencodeModel || 'opencode-1'}
-          onChange={(e) => onUpdate({ ...settings, opencodeModel: e.target.value })}
-          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
-        >
-          <option value="opencode-1">OpenCode 1</option>
-        </select>
-      </div>
-      <div className="space-y-1">
-        <label className="text-[10px] text-nexus-dim uppercase font-bold">Base URL</label>
-        <input 
-          type="text"
-          value={settings.opencodeBaseUrl || 'https://api.opencode.ai/v1'}
-          onChange={(e) => onUpdate({ ...settings, opencodeBaseUrl: e.target.value })}
-          className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-purple-400 focus:outline-none font-mono"
-          placeholder="https://api.opencode.ai/v1"
-        />
-      </div>
-    </div>
-  );
-
   return (
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-8 animate-fade-in">
       <div className="w-full max-w-md bg-nexus-900 border border-nexus-border shadow-[0_0_30px_rgba(0,0,0,0.5)] flex flex-col rounded relative overflow-hidden">
@@ -473,6 +433,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onUpdate
 
                  {/* Provider Settings */}
                  {renderProviderSettings()}
+
+                 {/* GitHub Integration */}
+                 <div className="h-px w-full bg-nexus-border/50" />
+                 <div className="space-y-3">
+                     <div className="flex items-center gap-2 text-gray-400">
+                         <Github size={16} />
+                         <label className="text-xs font-bold font-mono uppercase">GitHub Integration</label>
+                     </div>
+                     <div className="space-y-2">
+                         <div>
+                             <label className="text-[10px] text-nexus-dim uppercase font-bold">Personal Access Token</label>
+                             <input
+                                 type="password"
+                                 value={settings.githubToken || ''}
+                                 onChange={(e) => onUpdate({ ...settings, githubToken: e.target.value })}
+                                 className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-gray-400 focus:outline-none font-mono"
+                                 placeholder="ghp_..."
+                             />
+                         </div>
+                         <div className="grid grid-cols-2 gap-2">
+                             <div>
+                                 <label className="text-[10px] text-nexus-dim uppercase font-bold">Owner</label>
+                                 <input
+                                     type="text"
+                                     value={settings.githubOwner || ''}
+                                     onChange={(e) => onUpdate({ ...settings, githubOwner: e.target.value })}
+                                     className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-gray-400 focus:outline-none font-mono"
+                                     placeholder="owner"
+                                 />
+                             </div>
+                             <div>
+                                 <label className="text-[10px] text-nexus-dim uppercase font-bold">Repository</label>
+                                 <input
+                                     type="text"
+                                     value={settings.githubRepo || ''}
+                                     onChange={(e) => onUpdate({ ...settings, githubRepo: e.target.value })}
+                                     className="w-full bg-nexus-900 border border-nexus-border text-xs p-2 text-gray-300 rounded focus:border-gray-400 focus:outline-none font-mono"
+                                     placeholder="repo"
+                                 />
+                             </div>
+                         </div>
+                     </div>
+                     <div className="text-[9px] text-nexus-dim">
+                         Create a <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:underline">Personal Access Token</a> with repo permissions.
+                     </div>
+                 </div>
              </div>
           )}
 

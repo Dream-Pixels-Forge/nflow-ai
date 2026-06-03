@@ -18,9 +18,15 @@ export interface AgentConfig {
   icon: string;
 }
 
+export interface MessageToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 export interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   timestamp: number;
   agent: AgentMode;
@@ -29,6 +35,17 @@ export interface Message {
   grounding?: {
     urls: string[];
   };
+  /** Tool calls made by the assistant in this message */
+  toolCalls?: MessageToolCall[];
+  /** ID of the tool call this message responds to (role: 'tool') */
+  toolCallId?: string;
+  /** Tool results executed for this turn */
+  toolResults?: Array<{
+    name: string;
+    success: boolean;
+    output: string;
+    error?: string;
+  }>;
 }
 
 export interface Task {
@@ -46,7 +63,7 @@ export interface SystemMetrics {
 }
 
 export type SuggestionLevel = 'low' | 'medium' | 'high';
-export type AIProvider = 'gemini' | 'ollama' | 'openrouter' | 'nvidia' | 'opencode';
+export type AIProvider = 'gemini' | 'ollama' | 'openrouter' | 'nvidia';
 
 export interface AppSettings {
   suggestionLevel: SuggestionLevel;
@@ -68,10 +85,10 @@ export interface AppSettings {
   nvidiaApiKey?: string;
   nvidiaModel?: string;
   nvidiaBaseUrl?: string;
-  // OpenCode Settings
-  opencodeApiKey?: string;
-  opencodeModel?: string;
-  opencodeBaseUrl?: string;
+  // GitHub Settings
+  githubToken?: string;
+  githubOwner?: string;
+  githubRepo?: string;
 }
 
 // New Tool Interfaces
@@ -112,8 +129,7 @@ export const PROVIDER_NAMES: Record<AIProvider, string> = {
   gemini: 'Google Gemini',
   ollama: 'Ollama (Local)',
   openrouter: 'OpenRouter',
-  nvidia: 'NVIDIA NIM',
-  opencode: 'OpenCode'
+  nvidia: 'NVIDIA NIM'
 };
 
 // Provider Descriptions
@@ -121,6 +137,49 @@ export const PROVIDER_DESCRIPTIONS: Record<AIProvider, string> = {
   gemini: 'Google Cloud AI with grounding and search capabilities',
   ollama: 'Local inference with open-source models',
   openrouter: 'Access to 100+ models via unified API',
-  nvidia: 'NVIDIA inference microservices for enterprise AI',
-  opencode: 'Open-source AI coding assistant'
+  nvidia: 'NVIDIA inference microservices for enterprise AI'
 };
+
+// GitHub Types
+export interface GitHubIssue {
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  labels: Array<{ name: string; color: string }>;
+  created_at: string;
+  user: { login: string };
+  body?: string;
+  html_url: string;
+}
+
+export interface GitHubPR {
+  number: number;
+  title: string;
+  state: 'open' | 'closed' | 'merged';
+  draft: boolean;
+  head: { ref: string };
+  base: { ref: string };
+  created_at: string;
+  user: { login: string };
+  html_url: string;
+}
+
+export interface GitHubRelease {
+  tag_name: string;
+  name: string;
+  draft: boolean;
+  prerelease: boolean;
+  created_at: string;
+  body?: string;
+}
+
+export interface GitHubRepo {
+  full_name: string;
+  name: string;
+  description: string;
+  private: boolean;
+  stargazers_count: number;
+  forks_count: number;
+  open_issues_count: number;
+  html_url: string;
+}

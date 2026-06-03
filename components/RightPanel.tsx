@@ -1,14 +1,17 @@
 import React from 'react';
-import { ToolState } from '../types';
+import { ToolState, AppSettings } from '../types';
 import { SystemMonitor } from './SystemMonitor';
 import { ToolsPanel } from './ToolsPanel';
-import { Activity, Wrench, PanelRightClose } from 'lucide-react';
+import { GitHubPanel } from './GitHubPanel';
+import { Activity, Wrench, Github, PanelRightClose } from 'lucide-react';
 
 interface RightPanelProps {
-  rightPanelTab: 'telemetry' | 'tools';
+  rightPanelTab: 'telemetry' | 'tools' | 'github';
   toolState: ToolState;
-  onSetRightPanelTab: (tab: 'telemetry' | 'tools') => void;
+  settings: AppSettings;
+  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github') => void;
   onSetToolState: React.Dispatch<React.SetStateAction<ToolState>>;
+  onUpdateSettings: (newSettings: AppSettings) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -16,8 +19,10 @@ interface RightPanelProps {
 export const RightPanel: React.FC<RightPanelProps> = ({
   rightPanelTab,
   toolState,
+  settings,
   onSetRightPanelTab,
   onSetToolState,
+  onUpdateSettings,
   isOpen,
   onToggle
 }) => {
@@ -50,6 +55,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           Tools
         </button>
         <button
+          onClick={() => onSetRightPanelTab('github')}
+          className={`flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+            rightPanelTab === 'github'
+              ? 'bg-nexus-800/50 text-nexus-accent border-b-2 border-nexus-accent'
+              : 'bg-nexus-900 text-gray-500 hover:bg-nexus-800/50 hover:text-gray-300'
+          }`}
+        >
+          <Github size={12} />
+          GitHub
+        </button>
+        <button
           onClick={onToggle}
           className="px-2 py-2.5 bg-nexus-800 hover:bg-nexus-700 border-l border-nexus-border text-gray-500 hover:text-white transition-colors"
           title="Collapse Panel"
@@ -60,10 +76,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-        {rightPanelTab === 'telemetry'
-          ? <SystemMonitor />
-          : <ToolsPanel toolState={toolState} setToolState={onSetToolState} />
-        }
+        {rightPanelTab === 'telemetry' && <SystemMonitor />}
+        {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} />}
+        {rightPanelTab === 'github' && <GitHubPanel settings={settings} onUpdate={onUpdateSettings} />}
       </div>
     </div>
   );

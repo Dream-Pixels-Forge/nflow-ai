@@ -12,10 +12,22 @@ import {
   X,
   FileText,
   Image,
-  File
+  File,
+  Command
 } from 'lucide-react';
 import { AGENTS, AgentMode } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
+
+const SLASH_COMMANDS = [
+  { cmd: '/chat', desc: 'Switch to Chat agent', agent: AgentMode.CHAT },
+  { cmd: '/plan', desc: 'Switch to Plan agent', agent: AgentMode.PLAN },
+  { cmd: '/architect', desc: 'Switch to Architect agent', agent: AgentMode.ARCHITECT },
+  { cmd: '/coder', desc: 'Switch to Coder agent', agent: AgentMode.CODER },
+  { cmd: '/test', desc: 'Switch to Test agent', agent: AgentMode.TEST },
+  { cmd: '/secure', desc: 'Switch to Secure agent', agent: AgentMode.SECURE },
+  { cmd: '/deploy', desc: 'Switch to Deploy agent', agent: AgentMode.DEPLOY },
+  { cmd: '/monitor', desc: 'Switch to Monitor agent', agent: AgentMode.MONITOR },
+];
 
 interface AttachedFile {
   id: string;
@@ -54,6 +66,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [filteredCommands, setFilteredCommands] = useState(SLASH_COMMANDS);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -150,6 +164,30 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   const removeAttachedFile = (id: string) => {
     setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  // Command palette handlers
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    
+    // Show command palette when typing /
+    if (value.startsWith('/')) {
+      const query = value.toLowerCase();
+      const filtered = SLASH_COMMANDS.filter(cmd => 
+        cmd.cmd.toLowerCase().startsWith(query)
+      );
+      setFilteredCommands(filtered);
+      setShowCommandPalette(filtered.length > 0);
+    } else {
+      setShowCommandPalette(false);
+    }
+  };
+
+  const selectCommand = (cmd: string) => {
+    setInput(cmd + ' ');
+    setShowCommandPalette(false);
+    textareaRef.current?.focus();
   };
 
   // Microphone/Speech-to-text handlers
@@ -396,9 +434,9 @@ export const InputArea: React.FC<InputAreaProps> = ({
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={isHalted ? 'System halted - resume to continue' : `Message ${AGENTS[activeAgent].name}...`}
+            placeholder={isHalted ? 'System halted - resume to continue' : `Message ${AGENTS[activeAgent].name}... (type / for commands)`}
             className="w-full bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none px-4 pt-4 pb-2 text-sm leading-relaxed"
             rows={2}
             disabled={isInputDisabled}
@@ -410,6 +448,31 @@ export const InputArea: React.FC<InputAreaProps> = ({
             <span className={`text-sm font-bold ${AGENTS[activeAgent].color}`}>›</span>
           </div>
         </div>
+
+        {/* Slash Command Palette */}
+        {showCommandPalette && filteredCommands.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-1 mx-3 bg-nexus-800 border border-nexus-border rounded-sm shadow-xl overflow-hidden z-50">
+            <div className="px-3 py-2 border-b border-nexus-border flex items-center gap-2">
+              <Command size={12} className="text-nexus-accent" />
+              <span className="text-[10px] text-gray-400 font-mono">COMMANDS</span>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filteredCommands.map((cmd) => (
+                <button
+                  key={cmd.cmd}
+                  onClick={() => selectCommand(cmd.cmd)}
+                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-nexus-700 transition-colors text-left"
+                >
+                  <span className="text-nexus-accent font-mono text-xs font-bold min-w-[80px]">{cmd.cmd}</span>
+                  <span className="text-[10px] text-gray-400">{cmd.desc}</span>
+                </button>
+              ))}
+            </div>
+            <div className="px-3 py-1.5 border-t border-nexus-border text-[8px] text-gray-500 font-mono">
+              ↑↓ Navigate • Enter Select • Esc Close
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons - Bottom */}
         <div className="flex items-center justify-between px-3 pb-3 pt-1">

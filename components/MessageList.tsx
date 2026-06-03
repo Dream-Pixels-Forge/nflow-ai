@@ -153,29 +153,29 @@ export const MessageList: React.FC<MessageListProps> = ({
                          {/* Copy Button */}
                          <button
                            onClick={() => handleCopy(msg.content, msg.id)}
-                           className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
+                           className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
                            title="Copy message"
                          >
-                           {copiedId === msg.id ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                           {copiedId === msg.id ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                          </button>
 
                          {/* Download Button */}
                          <button
                            onClick={() => handleDownload(msg.content, msg)}
-                           className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
+                           className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
                            title="Download as text"
                          >
-                           <Download size={12} />
+                           <Download size={14} />
                          </button>
 
                          {/* Rerun Button (only for user messages) */}
                          {isUser && onRerunMessage && (
                            <button
                              onClick={() => onRerunMessage(msg.id)}
-                             className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
+                             className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-nexus-800 rounded-sm transition-colors"
                              title="Rerun message"
                            >
-                             <RefreshCw size={12} />
+                             <RefreshCw size={14} />
                            </button>
                          )}
 
@@ -183,10 +183,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                          {onDeleteMessage && (
                            <button
                              onClick={() => onDeleteMessage(msg.id)}
-                             className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-sm transition-colors"
+                             className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-sm transition-colors"
                              title="Delete message"
                            >
-                             <Trash2 size={12} />
+                             <Trash2 size={14} />
                            </button>
                          )}
                      </div>

@@ -49,3 +49,19 @@ export type {
   PipelineInfo,
   OrchestratorStats
 } from './PipelineOrchestrator';
+// Graph-Based Workflow Router
+export { GraphWorkflow } from './GraphWorkflow';
+export type {
+  GraphNode,
+  GraphEdge,
+  GraphWorkflowConfig,
+  GraphStep,
+  GraphExecution,
+} from './GraphWorkflow';
+
+// Human-in-the-Loop
+export { HITLManager, hitlManager } from './HITLManager';
+export type {
+  HITLRequest,
+  HITLResponse,
+} from './HITLManager';

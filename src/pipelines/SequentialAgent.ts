@@ -32,6 +32,9 @@ export interface PipelineAgent {
   beforeExecute?: (context: PipelineContext) => Promise<void>;
   afterExecute?: (output: any, context: PipelineContext) => Promise<void>;
   onError?: (error: Error, context: PipelineContext) => Promise<void>;
+  // Validation gate: runs after execute, before output is passed to next agent
+  // Return true to continue, false to fail the pipeline
+  validate?: (output: unknown, context: PipelineContext) => Promise<boolean>;
 }
 
 export interface SequentialPipelineConfig {
@@ -155,6 +158,25 @@ export class SequentialAgent {
           // Execute after hook
           if (agent.afterExecute) {
             await agent.afterExecute(output, execution.context);
+          }
+          // Validation gate: verify output before passing to next agent
+          if (agent.validate) {
+            const isValid = await agent.validate(output, execution.context);
+            if (!isValid) {
+              result.status = 'failed';
+              result.error = `Validation failed for agent "${agent.name}"`;
+              result.completedAt = new Date().toISOString();
+              result.duration = new Date(result.completedAt).getTime() - new Date(result.startedAt).getTime();
+
+              if (!this.config.continueOnError) {
+                execution.status = 'failed';
+                execution.error = result.error;
+                execution.completedAt = new Date().toISOString();
+                execution.totalDuration = new Date(execution.completedAt).getTime() - new Date(execution.startedAt).getTime();
+                return execution;
+              }
+              continue; // Skip to next agent if continueOnError
+            }
           }
 
           // Update result

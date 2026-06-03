@@ -8,6 +8,11 @@ export interface StreamChunk {
   done: boolean;
   sources?: string[];
   suggestedAgent?: AgentMode;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    arguments: string;
+  }>;
 }
 
 export const sendMessageToGeminiStream = async function* (
@@ -17,11 +22,11 @@ export const sendMessageToGeminiStream = async function* (
   tools: ToolState,
   projectSummary: string = "",
   currentTasks: Task[] = [],
-  suggestionLevel: SuggestionLevel = 'medium'
+  suggestionLevel: SuggestionLevel = 'medium',
+  apiKey: string = ''
 ): AsyncGenerator<StreamChunk> {
-  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key not found");
+    throw new Error("API Key not found. Set your Gemini API key in Settings, or switch to Ollama.");
   }
 
   const ai = new GoogleGenAI({ apiKey });

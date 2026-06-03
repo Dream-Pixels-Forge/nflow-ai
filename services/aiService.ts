@@ -3,7 +3,6 @@ import { sendMessageToGemini } from "./geminiService";
 import { sendMessageToOllama } from "./ollamaService";
 import { sendMessageToOpenRouter, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
 import { sendMessageToNVIDIA, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
-import { sendMessageToOpenCode, DEFAULT_OPENCODE_CONFIG } from "./openCodeService";
 import { AgentMode, Message, ToolState, Task, AppSettings } from "../types";
 
 const TECHNICAL_AGENTS = [
@@ -73,23 +72,6 @@ export const sendMessageToAgent = async (
           apiKey: settings.nvidiaApiKey || '',
           model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
           baseUrl: settings.nvidiaBaseUrl || DEFAULT_NVIDIA_CONFIG.baseUrl
-        }
-      );
-    }
-
-    case 'opencode': {
-      return sendMessageToOpenCode(
-        prompt,
-        history,
-        agent,
-        tools,
-        projectSummary,
-        currentTasks,
-        settings.suggestionLevel,
-        {
-          apiKey: settings.opencodeApiKey || '',
-          model: settings.opencodeModel || DEFAULT_OPENCODE_CONFIG.model,
-          baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_CONFIG.baseUrl
         }
       );
     }

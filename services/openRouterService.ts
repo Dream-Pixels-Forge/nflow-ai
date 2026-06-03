@@ -97,7 +97,27 @@ export const sendMessageToOpenRouter = async (
 
     const messages = [systemMsg, ...recentHistory, userMsg];
 
-    // Call OpenRouter API
+    // Call OpenRouter API with function calling support
+    const requestBody: Record<string, unknown> = {
+      model: config.model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 4096,
+    };
+
+    // Attach tool definitions if the caller provides them via contextInjection
+    const toolDefs = extractToolDefsFromContext(contextInjection);
+    if (toolDefs.length > 0) {
+      requestBody.tools = toolDefs.map((td) => ({
+        type: "function",
+        function: {
+          name: td.name,
+          description: td.description,
+          parameters: td.parameters,
+        },
+      }));
+    }
+
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -106,12 +126,7 @@ export const sendMessageToOpenRouter = async (
         'HTTP-Referer': window.location.origin,
         'X-Title': 'NexusFlow'
       },
-      body: JSON.stringify({
-        model: config.model,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 4096
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -167,3 +182,166 @@ export const getOpenRouterModels = async (apiKey: string): Promise<string[]> => 
     return OPENROUTER_MODELS.map(m => m.id);
   }
 };
+// ── Streaming ──────────────────────────────────────────────────────
+
+export interface OpenRouterStreamChunk {
+  text: string;
+  done: boolean;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    arguments: string;
+  }>;
+}
+
+export async function* sendMessageToOpenRouterStream(
+  prompt: string,
+  history: Message[],
+  agent: AgentMode,
+  tools: ToolState,
+  projectSummary: string = "",
+  currentTasks: Task[] = [],
+  suggestionLevel: SuggestionLevel = 'medium',
+  config: OpenRouterConfig = DEFAULT_OPENROUTER_CONFIG,
+): AsyncGenerator<OpenRouterStreamChunk> {
+  let contextInjection = "";
+  if (tools.rag.active && tools.rag.content.length > 0) {
+    contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\n${tools.rag.content.join('\n---\n')}\n`;
+  }
+  if (tools.mcp.active) {
+    contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
+  }
+
+  const systemMsg: OpenRouterMessage = {
+    role: 'system',
+    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+  };
+
+  const recentHistory: OpenRouterMessage[] = history
+    .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+    .slice(-15)
+    .map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+
+  const userMsg: OpenRouterMessage = {
+    role: 'user',
+    content: contextInjection ? `${contextInjection}\n\nUSER REQUEST: ${prompt}` : prompt
+  };
+
+  const messages = [systemMsg, ...recentHistory, userMsg];
+
+  const requestBody: Record<string, unknown> = {
+    model: config.model,
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 4096,
+    stream: true,
+  };
+
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.apiKey}`,
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'NexusFlow'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`OpenRouter API Error: ${response.status} ${errorData.error?.message || response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const collectedToolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") {
+          // Flush any remaining tool calls
+          const toolCalls = [...collectedToolCalls.values()];
+          yield { text: "", done: true, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
+          return;
+        }
+
+        try {
+          const parsed: unknown = JSON.parse(data);
+          if (parsed !== null && typeof parsed === "object" && "choices" in parsed) {
+            const obj = parsed as Record<string, unknown>;
+            const choices = obj.choices as Array<Record<string, unknown>> | undefined;
+            const choice = choices?.[0];
+            if (!choice) continue;
+
+            const delta = choice.delta as Record<string, unknown> | undefined;
+            if (!delta) continue;
+
+            // Text chunk
+            if (typeof delta.content === "string") {
+              yield { text: delta.content, done: false };
+            }
+
+            // Tool call chunks (streamed incrementally)
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls as Array<Record<string, unknown>>) {
+                const tcIndex = Number(tc.index ?? 0);
+                const existing = collectedToolCalls.get(tcIndex);
+                const tcFunc = tc.function as Record<string, unknown> | undefined;
+                if (existing) {
+                  if (typeof tcFunc?.arguments === "string") existing.arguments += tcFunc.arguments;
+                } else {
+                  collectedToolCalls.set(tcIndex, {
+                    id: String(tc.id ?? `call_${tcIndex}`),
+                    name: String(tcFunc?.name ?? ""),
+                    arguments: String(tcFunc?.arguments ?? ""),
+                  });
+                }
+              }
+            }
+          }
+        } catch {
+          // Skip malformed SSE lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const finalToolCalls = [...collectedToolCalls.values()];
+  if (finalToolCalls.length > 0) {
+    yield { text: "", done: true, toolCalls: finalToolCalls };
+  }
+}
+
+// ── Tool definition extraction helper ───────────────────────────────
+// This is a temporary bridge until services accept tools directly.
+
+interface ToolDefForProvider {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+function extractToolDefsFromContext(_context: string): ToolDefForProvider[] {
+  // Future: parse tool definitions from context injection
+  return [];
+}
+

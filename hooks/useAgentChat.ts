@@ -3,6 +3,7 @@ import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile }
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
 import { memoryManager } from '../src/agentic';
+import { loadMessages, saveMessage, loadSettings, saveSettings } from '../src/persistence';
 
 interface UseAgentChatProps {
   activeAgent: AgentMode;
@@ -23,6 +24,8 @@ interface UseAgentChatReturn {
   setPendingSwitch: (agent: AgentMode | null) => void;
   handleSendMessage: () => Promise<void>;
   deleteMessage: (messageId: string) => void;
+  undoDelete: () => void;
+  showUndoToast: boolean;
   rerunMessage: (messageId: string) => void;
 }
 
@@ -80,6 +83,53 @@ ${taskList || 'No tasks defined'}`;
     });
     return initialHistories;
   });
+  // Persistence: Load messages from IndexedDB on mount
+  const isLoaded = useRef(false);
+  useEffect(() => {
+    if (isLoaded.current) return;
+    isLoaded.current = true;
+
+    const loadAllMessages = async () => {
+      const loaded: Partial<Record<AgentMode, Message[]>> = {};
+      for (const mode of Object.values(AgentMode)) {
+        const messages = await loadMessages(mode);
+        if (messages.length > 0) {
+          loaded[mode] = messages;
+        }
+      }
+
+      if (Object.keys(loaded).length > 0) {
+        setAgentHistories((prev) => {
+          const next = { ...prev };
+          for (const [mode, messages] of Object.entries(loaded)) {
+            next[mode as AgentMode] = messages;
+          }
+          return next;
+        });
+      }
+    };
+
+    loadAllMessages().catch(console.error);
+  }, []);
+
+  // Persistence: Save messages when they change (debounced)
+  useEffect(() => {
+    if (!isLoaded.current) return;
+
+    const timeoutId = setTimeout(() => {
+      for (const [mode, messages] of Object.entries(agentHistories)) {
+        // Only save non-system messages
+        const nonSystem = messages.filter((m) => m.role !== "system");
+        if (nonSystem.length > 0) {
+          saveMessage(mode as AgentMode, nonSystem[nonSystem.length - 1]).catch(
+            console.error,
+          );
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [agentHistories]);
 
   // Parse tasks from PLAN agent output
   const extractTasksFromContent = (content: string) => {
@@ -191,8 +241,15 @@ ${taskList || 'No tasks defined'}`;
       );
 
       // Process stream chunks
+      let pendingToolCalls: Array<{ id: string; name: string; arguments: string }> = [];
+
       for await (const chunk of stream) {
         if (chunk.done) {
+          // Check for tool calls in the final chunk
+          if (chunk.toolCalls && chunk.toolCalls.length > 0) {
+            pendingToolCalls = chunk.toolCalls;
+          }
+
           // Stream finished - finalize the message
           const finalMsg: Message = {
             id: streamingMsgId,
@@ -200,7 +257,8 @@ ${taskList || 'No tasks defined'}`;
             content: streamedContent,
             timestamp: Date.now(),
             agent: activeAgent,
-            grounding: chunk.sources ? { urls: chunk.sources } : undefined
+            grounding: chunk.sources ? { urls: chunk.sources } : undefined,
+            toolCalls: pendingToolCalls.length > 0 ? pendingToolCalls : undefined,
           };
 
           // Replace the streaming message with final version
@@ -208,6 +266,41 @@ ${taskList || 'No tasks defined'}`;
             ...prev,
             [activeAgent]: [...prev[activeAgent].filter(m => m.id !== streamingMsgId), finalMsg]
           }));
+
+          // Execute tool calls if present
+          if (pendingToolCalls.length > 0) {
+            const { toolExecutor } = await import("../src/tools/toolExecutor");
+            const toolResults: Array<{ name: string; success: boolean; output: string; error?: string }> = [];
+
+            for (const tc of pendingToolCalls) {
+              const result = await toolExecutor.execute(tc, ".");
+              toolResults.push({
+                name: result.name,
+                success: result.success,
+                output: result.output,
+                error: result.error,
+              });
+            }
+
+            // Add tool results as a system message for context
+            const toolResultMsg: Message = {
+              id: (Date.now() + 2).toString(),
+              role: 'system',
+              content: `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? r.output.slice(0, 500) : r.error}`).join("\n")}`,
+              timestamp: Date.now(),
+              agent: activeAgent,
+              toolResults,
+            };
+
+            setAgentHistories(prev => ({
+              ...prev,
+              [activeAgent]: [...prev[activeAgent], toolResultMsg]
+            }));
+
+            // TODO: Feed tool results back into model for continuation
+            // This requires a second API call with tool results in context.
+            // For now, the tool results are visible in the chat.
+          }
 
           // Task Extraction (Only if PLAN agent)
           if (activeAgent === AgentMode.PLAN) {
@@ -226,12 +319,12 @@ ${taskList || 'No tasks defined'}`;
         } else {
           // Accumulate streamed text
           streamedContent += chunk.text;
-          
+
           // Update the streaming message in history
           setAgentHistories(prev => {
             const messages = prev[activeAgent];
             const existingIdx = messages.findIndex(m => m.id === streamingMsgId);
-            
+
             if (existingIdx >= 0) {
               // Update existing streaming message
               const updated = [...messages];
@@ -257,10 +350,23 @@ ${taskList || 'No tasks defined'}`;
       }
 
     } catch (error) {
+      // Extract meaningful error message
+      const errMessage = error instanceof Error ? error.message : String(error);
+
+      // Provider-specific hints
+      let hint = "";
+      if (errMessage.includes("API Key not found")) {
+        hint = "\n\nHint: Set VITE_API_KEY in your .env file, or switch to Ollama in Settings.";
+      } else if (errMessage.includes("Failed to fetch") || errMessage.includes("NetworkError")) {
+        hint = "\n\nHint: Check if your AI provider is running. For Ollama, ensure it's running with OLLAMA_ORIGINS=\"*\".";
+      } else if (errMessage.includes("401") || errMessage.includes("403")) {
+        hint = "\n\nHint: Invalid API key. Check your settings.";
+      }
+
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'system',
-        content: 'ERROR: AGENT CONNECTION INTERRUPTED.',
+        content: `ERROR: ${errMessage}${hint}`,
         timestamp: Date.now(),
         agent: activeAgent,
         isError: true
@@ -274,13 +380,40 @@ ${taskList || 'No tasks defined'}`;
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
 
-  // Delete a message by ID
+  // Undo state for message deletion
+  const [deletedMessage, setDeletedMessage] = useState<{message: Message, agent: AgentMode} | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+
+  // Delete a message by ID with undo support
   const deleteMessage = useCallback((messageId: string) => {
-    setAgentHistories(prev => ({
-      ...prev,
-      [activeAgent]: prev[activeAgent].filter(msg => msg.id !== messageId)
-    }));
-  }, [activeAgent]);
+    const currentMessages = agentHistories[activeAgent];
+    const msgToDelete = currentMessages.find(msg => msg.id === messageId);
+    if (msgToDelete) {
+      setDeletedMessage({ message: msgToDelete, agent: activeAgent });
+      setShowUndoToast(true);
+      setAgentHistories(prev => ({
+        ...prev,
+        [activeAgent]: prev[activeAgent].filter(msg => msg.id !== messageId)
+      }));
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        setShowUndoToast(false);
+        setDeletedMessage(null);
+      }, 5000);
+    }
+  }, [activeAgent, agentHistories]);
+
+  // Undo delete
+  const undoDelete = useCallback(() => {
+    if (deletedMessage) {
+      setAgentHistories(prev => ({
+        ...prev,
+        [deletedMessage.agent]: [...prev[deletedMessage.agent], deletedMessage.message]
+      }));
+      setShowUndoToast(false);
+      setDeletedMessage(null);
+    }
+  }, [deletedMessage]);
 
   // Rerun a user message (resend it)
   const rerunMessage = useCallback(async (messageId: string) => {
@@ -303,6 +436,8 @@ ${taskList || 'No tasks defined'}`;
     setPendingSwitch,
     handleSendMessage,
     deleteMessage,
+    undoDelete,
+    showUndoToast,
     rerunMessage
   };
 };

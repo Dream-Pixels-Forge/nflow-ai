@@ -19,6 +19,7 @@ import { RightPanel } from './components/RightPanel';
 import { useAgentChat } from './hooks/useAgentChat';
 import { useCommandParser } from './hooks/useCommandParser';
 import { memoryManager, agentCardManager } from './src/agentic';
+import { useAgenticSystems } from './hooks/useAgenticSystems';
 
 // Helper to cycle enum
 const getNextAgent = (current: AgentMode): AgentMode => {
@@ -59,9 +60,13 @@ export default function App() {
     ollamaCodingModel: 'llama3'
   });
 
+  // Agentic Systems
+  const [agenticState, agenticActions] = useAgenticSystems();
+
   const [showBootSequence, setShowBootSequence] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools'>('telemetry');
+  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools' | 'github'>('telemetry');
   const [showRightPanel, setShowRightPanel] = useState(true);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
   // Orchestrator State
   const [transitionTarget, setTransitionTarget] = useState<AgentMode | null>(null);
@@ -138,6 +143,8 @@ export default function App() {
     setPendingSwitch,
     handleSendMessage: baseHandleSendMessage,
     deleteMessage,
+    undoDelete,
+    showUndoToast,
     rerunMessage
   } = useAgentChat({
     activeAgent,
@@ -271,7 +278,7 @@ export default function App() {
 
   return (
     <ConfigurationProvider>
-      <div className="h-screen w-screen bg-nexus-900 text-gray-300 font-mono flex overflow-hidden relative">
+      <div className="h-screen w-screen bg-nexus-900 text-gray-300 font-mono flex flex-col md:flex-row overflow-hidden relative">
 
         {/* Transition Overlay */}
         {transitionTarget && <IncomingTransmission targetAgent={transitionTarget} />}
@@ -315,6 +322,7 @@ export default function App() {
           tasks={tasks}
           onSwitchAgent={(targetAgent) => {
             setTransitionTarget(targetAgent);
+            setShowMobileSidebar(false);
             setTimeout(() => {
               setActiveAgent(targetAgent);
               setPendingSwitch(null);
@@ -323,6 +331,8 @@ export default function App() {
           }}
           onDismissPendingSwitch={() => setPendingSwitch(null)}
           onShowTaskDashboard={() => setShowTaskDashboard(true)}
+          isOpen={showMobileSidebar}
+          onClose={() => setShowMobileSidebar(false)}
         />
 
         {/* Main Terminal Area */}
@@ -334,6 +344,11 @@ export default function App() {
             virtualFiles={virtualFiles}
             onShowSettings={() => setShowSettings(true)}
             onShowProjectManager={() => setShowProjectManager(true)}
+            onToggleSidebar={() => setShowMobileSidebar(!showMobileSidebar)}
+            onEmergencyStop={() => {
+              // Emergency halt all agents
+              agenticActions.haltAll();
+            }}
           />
 
           {/* Messages Scroll Area */}
@@ -361,23 +376,36 @@ export default function App() {
             onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
             onFilesAttached={(files) => {
-              // Add attached files to RAG context
-              const reader = new FileReader();
+              // Add attached files to RAG context (one FileReader per file)
               files.forEach(file => {
-                reader.onload = (e) => {
-                  const content = e.target?.result as string;
-                  if (content) {
-                    setToolState(prev => ({
-                      ...prev,
-                      rag: {
-                        ...prev.rag,
-                        content: [...prev.rag.content, `FILE: ${file.name}\nCONTENT:\n${content}`],
-                        active: true
-                      }
-                    }));
-                  }
-                };
-                reader.readAsText(file);
+                if (file.type.startsWith('image/')) {
+                  // Images: add metadata reference
+                  setToolState(prev => ({
+                    ...prev,
+                    rag: {
+                      ...prev.rag,
+                      content: [...prev.rag.content, `FILE: ${file.name} (image, ${(file.size / 1024).toFixed(1)}KB)`],
+                      active: true
+                    }
+                  }));
+                } else {
+                  // Text files: read content
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const content = e.target?.result;
+                    if (typeof content === "string") {
+                      setToolState(prev => ({
+                        ...prev,
+                        rag: {
+                          ...prev.rag,
+                          content: [...prev.rag.content, `FILE: ${file.name}\nCONTENT:\n${content}`],
+                          active: true
+                        }
+                      }));
+                    }
+                  };
+                  reader.readAsText(file);
+                }
               });
             }}
           />
@@ -395,15 +423,30 @@ export default function App() {
           </button>
         )}
 
-        {/* Right Panel: Telemetry & Tools */}
+        {/* Right Panel: Telemetry, Tools & GitHub */}
         <RightPanel
           rightPanelTab={rightPanelTab}
           toolState={toolState}
+          settings={settings}
           onSetRightPanelTab={setRightPanelTab}
           onSetToolState={setToolState}
+          onUpdateSettings={setSettings}
           isOpen={showRightPanel}
           onToggle={() => setShowRightPanel(false)}
         />
+
+        {/* Undo Delete Toast */}
+        {showUndoToast && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-nexus-800 border border-nexus-border rounded-lg px-4 py-3 shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <span className="text-xs text-gray-300">Message deleted</span>
+            <button
+              onClick={undoDelete}
+              className="text-xs font-bold text-nexus-accent hover:text-white transition-colors px-2 py-1 rounded hover:bg-nexus-700"
+            >
+              UNDO
+            </button>
+          </div>
+        )}
 
       </div>
     </ConfigurationProvider>

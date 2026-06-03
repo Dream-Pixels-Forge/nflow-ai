@@ -1,6 +1,6 @@
 import React from 'react';
 import { AGENTS, AgentMode, Task } from '../types';
-import { FolderOpen, ListTodo, Check, ArrowRightLeft } from 'lucide-react';
+import { FolderOpen, ListTodo, Check, ArrowRightLeft, X } from 'lucide-react';
 import { AgentGrid } from './AgentGrid';
 
 interface SidebarProps {
@@ -10,6 +10,8 @@ interface SidebarProps {
   onSwitchAgent: (agent: AgentMode) => void;
   onDismissPendingSwitch: () => void;
   onShowTaskDashboard: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -18,12 +20,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   tasks,
   onSwitchAgent,
   onDismissPendingSwitch,
-  onShowTaskDashboard
+  onShowTaskDashboard,
+  isOpen = true,
+  onClose
 }) => {
+  // On mobile, render as overlay
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
+  if (isMobile && !isOpen) return null;
+
   return (
-    <div className="w-72 bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl">
+    <div className={`
+      ${isMobile ? 'fixed inset-y-0 left-0 z-40 w-72' : 'w-72'}
+      bg-nexus-900 border-r border-nexus-border flex flex-col z-10 shadow-xl
+      transition-transform duration-300
+      ${isMobile && !isOpen ? '-translate-x-full' : 'translate-x-0'}
+    `}>
       {/* Header */}
       <div className={`p-4 border-b border-nexus-border flex items-center gap-3 transition-all duration-300 ${pendingSwitch ? 'bg-nexus-900' : 'bg-nexus-800/30'}`}>
+        {/* Mobile Close Button */}
+        {isMobile && onClose && (
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-nexus-800 rounded-sm transition-colors md:hidden"
+          >
+            <X size={16} />
+          </button>
+        )}
         {pendingSwitch ? (
           <>
              <div className={`p-1.5 rounded-sm border animate-pulse ${AGENTS[pendingSwitch].color.replace('text-', 'border-')} bg-opacity-10`}>

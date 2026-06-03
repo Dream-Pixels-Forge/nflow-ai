@@ -10,11 +10,11 @@ export const sendMessageToGemini = async (
   tools: ToolState,
   projectSummary: string = "",
   currentTasks: Task[] = [],
-  suggestionLevel: SuggestionLevel = 'medium'
+  suggestionLevel: SuggestionLevel = 'medium',
+  apiKey: string = ''
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
-  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key not found");
+    throw new Error("API Key not found. Set your Gemini API key in Settings, or switch to Ollama.");
   }
 
   const ai = new GoogleGenAI({ apiKey });

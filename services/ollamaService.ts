@@ -97,20 +97,22 @@ export const sendMessageToOllama = async (
     const messages = [systemMsg, ...recentHistory, userMsg];
     const cleanUrl = baseUrl.replace(/\/$/, '');
 
-    // Call Ollama API
+    // Call Ollama API with tool support
+    const requestBody: Record<string, unknown> = {
+      model: model,
+      messages: messages,
+      stream: false,
+      options: {
+          temperature: 0.7
+      }
+    };
+
     const response = await fetch(`${cleanUrl}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        stream: false, 
-        options: {
-            temperature: 0.7
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -146,3 +148,127 @@ export const sendMessageToOllama = async (
     };
   }
 };
+// ── Streaming ──────────────────────────────────────────────────────
+
+export interface OllamaStreamChunk {
+  text: string;
+  done: boolean;
+  toolCalls?: Array<{
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
+}
+
+export async function* sendMessageToOllamaStream(
+  prompt: string,
+  history: Message[],
+  agent: AgentMode,
+  tools: ToolState,
+  projectSummary: string = "",
+  currentTasks: Task[] = [],
+  suggestionLevel: SuggestionLevel = 'medium',
+  baseUrl: string = 'http://localhost:11434',
+  model: string = 'llama3',
+): AsyncGenerator<OllamaStreamChunk> {
+  let contextInjection = "";
+  if (tools.rag.active && tools.rag.content.length > 0) {
+    contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\n${tools.rag.content.join('\n---\n')}\n`;
+  }
+  if (tools.mcp.active) {
+    contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
+  }
+
+  const systemMsg = {
+    role: 'system',
+    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+  };
+
+  const recentHistory = history
+    .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+    .slice(-10)
+    .map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+  const userMsg = {
+    role: 'user',
+    content: contextInjection ? `${contextInjection}\n\nUSER REQUEST: ${prompt}` : prompt
+  };
+
+  const messages = [systemMsg, ...recentHistory, userMsg];
+  const cleanUrl = baseUrl.replace(/\/$/, '');
+
+  const response = await fetch(`${cleanUrl}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      stream: true,
+      options: { temperature: 0.7 }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama API Error: ${response.status} ${response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed: unknown = JSON.parse(line);
+          if (parsed !== null && typeof parsed === "object" && "message" in parsed) {
+            const obj = parsed as Record<string, unknown>;
+            const msg = obj.message as Record<string, unknown> | undefined;
+            if (!msg) continue;
+
+            if (typeof msg.content === "string") {
+              yield { text: msg.content, done: false };
+            }
+            if (Array.isArray(msg.tool_calls)) {
+              const toolCalls = (msg.tool_calls as Array<Record<string, unknown>>)
+                .filter((tc) => {
+                  const fn = tc.function as Record<string, unknown> | undefined;
+                  return typeof fn?.name === "string";
+                })
+                .map((tc) => {
+                  const fn = tc.function as Record<string, unknown>;
+                  return {
+                    name: String(fn.name),
+                    arguments: (fn.arguments as Record<string, unknown>) ?? {},
+                  };
+                });
+              if (toolCalls.length > 0) {
+                yield { text: "", done: true, toolCalls };
+              }
+            }
+            if (msg.done === true) {
+              yield { text: "", done: true };
+              return;
+            }
+          }
+        } catch {
+          // Skip malformed JSON lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}

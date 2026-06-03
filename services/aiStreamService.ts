@@ -1,9 +1,7 @@
-
 import { sendMessageToGeminiStream, StreamChunk } from "./geminiStreamService";
-import { sendMessageToOllama } from "./ollamaService";
-import { sendMessageToOpenRouter, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
+import { sendMessageToOllama, sendMessageToOllamaStream } from "./ollamaService";
+import { sendMessageToOpenRouter, sendMessageToOpenRouterStream, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
 import { sendMessageToNVIDIA, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
-import { sendMessageToOpenCode, DEFAULT_OPENCODE_CONFIG } from "./openCodeService";
 import { AgentMode, Message, ToolState, Task, AppSettings } from "../types";
 
 const TECHNICAL_AGENTS = [
@@ -14,7 +12,11 @@ const TECHNICAL_AGENTS = [
   AgentMode.DEPLOY
 ];
 
-// Streaming version for Gemini
+/**
+ * Unified streaming interface for all providers.
+ * Real streaming for Gemini, Ollama, and OpenRouter.
+ * NVIDIA falls back to simulated streaming (single chunk).
+ */
 export const sendMessageToAgentStream = async function* (
   prompt: string,
   history: Message[],
@@ -24,46 +26,61 @@ export const sendMessageToAgentStream = async function* (
   currentTasks: Task[] = [],
   settings: AppSettings
 ): AsyncGenerator<StreamChunk> {
-  
-  // Only Gemini supports streaming for now
-  if (settings.aiProvider === 'gemini') {
-    yield* sendMessageToGeminiStream(
-      prompt,
-      history,
-      agent,
-      tools,
-      projectSummary,
-      currentTasks,
-      settings.suggestionLevel
-    );
-  } else {
-    // For other providers, simulate streaming by yielding chunks
-    const response = await sendMessageToNonStreamingProvider(
-      prompt, history, agent, tools, projectSummary, currentTasks, settings
-    );
-    
-    // Yield text in chunks to simulate streaming
-    const chunkSize = 10;
-    for (let i = 0; i < response.text.length; i += chunkSize) {
-      yield {
-        text: response.text.slice(i, i + chunkSize),
-        done: false
-      };
-      // Small delay to simulate streaming
-      await new Promise(resolve => setTimeout(resolve, 20));
+
+  switch (settings.aiProvider) {
+    case 'gemini':
+      yield* sendMessageToGeminiStream(
+        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, settings.geminiApiKey || ''
+      );
+      break;
+
+    case 'ollama': {
+      const isTechnical = TECHNICAL_AGENTS.includes(agent);
+      const targetModel = isTechnical ? settings.ollamaCodingModel : settings.ollamaGeneralModel;
+      yield* sendMessageToOllamaStream(
+        prompt, history, agent, tools, projectSummary, currentTasks,
+        settings.suggestionLevel, settings.ollamaUrl, targetModel || settings.ollamaGeneralModel
+      );
+      break;
     }
-    
-    yield {
-      text: "",
-      done: true,
-      sources: response.sources,
-      suggestedAgent: response.suggestedAgent
-    };
+
+    case 'openrouter': {
+      const config = {
+        apiKey: settings.openrouterApiKey || '',
+        model: settings.openrouterModel || 'anthropic/claude-3.5-sonnet',
+        baseUrl: 'https://openrouter.ai/api/v1'
+      };
+      yield* sendMessageToOpenRouterStream(
+        prompt, history, agent, tools, projectSummary, currentTasks,
+        settings.suggestionLevel, config
+      );
+      break;
+    }
+
+    default: {
+      // NVIDIA: simulated streaming (single response chunked)
+      const response = await fetchProviderResponse(prompt, history, agent, tools, projectSummary, currentTasks, settings);
+      const chunkSize = 10;
+      for (let i = 0; i < response.text.length; i += chunkSize) {
+        yield {
+          text: response.text.slice(i, i + chunkSize),
+          done: false
+        };
+        await new Promise<void>((resolve) => { setTimeout(resolve, 20); resolve(); });
+      }
+      yield {
+        text: "",
+        done: true,
+        sources: response.sources,
+        suggestedAgent: response.suggestedAgent
+      };
+      break;
+    }
   }
 };
 
-// Non-streaming helper for other providers
-const sendMessageToNonStreamingProvider = async (
+// Non-streaming fallback for NVIDIA
+const fetchProviderResponse = async (
   prompt: string,
   history: Message[],
   agent: AgentMode,
@@ -121,23 +138,6 @@ const sendMessageToNonStreamingProvider = async (
           apiKey: settings.nvidiaApiKey || '',
           model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
           baseUrl: settings.nvidiaBaseUrl || DEFAULT_NVIDIA_CONFIG.baseUrl
-        }
-      );
-    }
-
-    case 'opencode': {
-      return sendMessageToOpenCode(
-        prompt,
-        history,
-        agent,
-        tools,
-        projectSummary,
-        currentTasks,
-        settings.suggestionLevel,
-        {
-          apiKey: settings.opencodeApiKey || '',
-          model: settings.opencodeModel || DEFAULT_OPENCODE_CONFIG.model,
-          baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_CONFIG.baseUrl
         }
       );
     }

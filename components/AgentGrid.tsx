@@ -136,6 +136,54 @@ export const AgentGrid: React.FC<AgentGridProps> = ({ activeAgent }) => {
                 </div>
               </div>
             </div>
+            
+            {/* Flip Card Container */}
+            <div className="absolute inset-0 perspective-[1000px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 transform-style-preserve-3d transition-transform duration-500 group-hover:rotate-y-180">
+                {/* Front Face */}
+                <div className="absolute inset-0 backface-hidden bg-nexus-800 border border-nexus-accent p-2 rounded-sm overflow-hidden">
+                  <div className="flex items-start gap-2">
+                    <div className={`${isActive ? agent.color : 'text-gray-500'} shrink-0`}>
+                      <IconComponent size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h4 className={`font-mono text-[11px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                          {agent.name}
+                        </h4>
+                        <span className={`shrink-0 flex items-center gap-1 text-[8px] font-mono ${getStatusColor(status)}`}>
+                          {getStatusIcon(status)}
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-gray-500 leading-tight mt-0.5 truncate">
+                        {agent.id} MODULE
+                      </p>
+                      <div className={`inline-flex items-center gap-1 mt-1 px-1 py-0.5 rounded text-[7px] font-mono ${getPhaseColor(phase)}`}>
+                        <span>PHASE: {phase}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Back Face - Flipped content */}
+                <div className="absolute inset-0 backface-hidden bg-nexus-800 border border-nexus-accent p-2 rounded-sm rotate-y-180 overflow-hidden flex flex-col">
+                  <p className="text-[9px] text-gray-300 leading-snug mb-1.5 line-clamp-3">
+                    {agent.description}
+                  </p>
+                  <div className="border-t border-nexus-border pt-1.5 mt-auto">
+                    <div className="text-[8px] text-nexus-accent font-bold uppercase mb-1">Quick Commands</div>
+                    <div className="space-y-0.5">
+                      <div className="text-[8px] text-gray-400 truncate">
+                        <span className="bg-nexus-900 px-1 rounded text-nexus-accent">/{agent.id.toLowerCase()}</span> Switch agent
+                      </div>
+                      <div className="text-[8px] text-gray-400 truncate">
+                        <span className="bg-nexus-900 px-1 rounded text-nexus-accent">/tasks</span> View tasks
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
       })}
@@ -143,6 +191,15 @@ export const AgentGrid: React.FC<AgentGridProps> = ({ activeAgent }) => {
       <div className="col-span-2 mt-4 p-3 bg-blue-900/20 border border-blue-800/50 rounded text-[10px] text-blue-300 font-mono">
         <span className="font-bold">TIP:</span> Use <span className="bg-blue-900 px-1 rounded border border-blue-700">/chat</span>, <span className="bg-blue-900 px-1 rounded border border-blue-700">/coder</span> to jump channels, or <span className="bg-blue-900 px-1 rounded border border-blue-700">TAB</span> to cycle.
       </div>
+
+      <style>{`
+        .perspective-\[1000px\] { perspective: 1000px; }
+        .transform-style-preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .group:hover .group-hover\\:rotate-y-180 { transform: rotateY(180deg); }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+      `}</style>
     </div>
   );
 };

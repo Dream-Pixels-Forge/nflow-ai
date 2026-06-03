@@ -74,10 +74,11 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ onClose, tasks, 
         <div className="w-64 bg-[#252526] flex flex-col border-r border-[#333]">
           {/* Sidebar Header */}
           <div className="h-10 flex items-center px-4 text-gray-400 text-xs tracking-wider font-bold uppercase">
-            Nexus Bridge
+            IDE BRIDGE
+            <div className="text-[10px] text-gray-500 mt-1">Connect to any IDE</div>
           </div>
           
-          {/* Activity Bar (simulated) */}
+          {/* IDE Navigation */}
           <div className="flex bg-[#333333] py-1">
              <button 
                 onClick={() => setActiveTab('explorer')}
