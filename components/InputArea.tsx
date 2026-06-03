@@ -48,6 +48,7 @@ interface InputAreaProps {
   onSendMessage: () => void;
   onFilesAttached?: (files: File[]) => void;
   settings?: AppSettings;
+  onSettingsChange?: (settings: Partial<AppSettings>) => void;
   onChatModeChange?: (mode: ChatMode) => void;
 }
 
@@ -61,6 +62,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   onSendMessage,
   onFilesAttached,
   settings,
+  onSettingsChange,
   onChatModeChange
 }) => {
   // Agentic systems
@@ -636,7 +638,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                       <button
                         key={provider.id}
                         onClick={() => {
-                          // Provider change would need settings callback
+                          onSettingsChange?.({ aiProvider: provider.id });
                           setShowProviderDropdown(false);
                         }}
                         className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
@@ -683,7 +685,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                           <button
                             key={model}
                             onClick={() => {
-                              // Model change would need settings callback
+                              onSettingsChange?.({ ollamaGeneralModel: model });
                               setShowModelDropdown(false);
                             }}
                             className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
@@ -707,7 +709,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         <button
                           key={model}
                           onClick={() => {
-                            // Model change would need settings callback
+                            onSettingsChange?.({ openrouterModel: model });
                             setShowModelDropdown(false);
                           }}
                           className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${
@@ -726,6 +728,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         <button
                           key={model}
                           onClick={() => {
+                            // Gemini uses fixed model names, no setting needed
                             setShowModelDropdown(false);
                           }}
                           className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left"
@@ -739,6 +742,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         <button
                           key={model}
                           onClick={() => {
+                            onSettingsChange?.({ nvidiaModel: model });
                             setShowModelDropdown(false);
                           }}
                           className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-700 transition-colors text-left ${

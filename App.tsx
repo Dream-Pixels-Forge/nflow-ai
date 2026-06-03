@@ -377,6 +377,7 @@ export default function App() {
             onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
             settings={settings}
+            onSettingsChange={(partial) => setSettings(prev => ({ ...prev, ...partial }))}
             onChatModeChange={(mode) => setSettings(prev => ({ ...prev, chatMode: mode }))}
             onFilesAttached={(files) => {
               // Add attached files to RAG context (one FileReader per file)
