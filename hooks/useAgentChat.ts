@@ -19,6 +19,8 @@ interface UseAgentChatReturn {
   pendingSwitch: AgentMode | null;
   setPendingSwitch: (agent: AgentMode | null) => void;
   handleSendMessage: () => Promise<void>;
+  deleteMessage: (messageId: string) => void;
+  rerunMessage: (messageId: string) => void;
 }
 
 // Helper to infer agent from task title
@@ -192,6 +194,26 @@ export const useAgentChat = ({
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
 
+  // Delete a message by ID
+  const deleteMessage = useCallback((messageId: string) => {
+    setAgentHistories(prev => ({
+      ...prev,
+      [activeAgent]: prev[activeAgent].filter(msg => msg.id !== messageId)
+    }));
+  }, [activeAgent]);
+
+  // Rerun a user message (resend it)
+  const rerunMessage = useCallback(async (messageId: string) => {
+    const message = agentHistories[activeAgent].find(msg => msg.id === messageId);
+    if (message && message.role === 'user') {
+      setInput(message.content);
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        handleSendMessage();
+      }, 100);
+    }
+  }, [activeAgent, agentHistories, setInput, handleSendMessage]);
+
   return {
     input,
     setInput,
@@ -199,6 +221,8 @@ export const useAgentChat = ({
     isProcessing,
     pendingSwitch,
     setPendingSwitch,
-    handleSendMessage
+    handleSendMessage,
+    deleteMessage,
+    rerunMessage
   };
 };

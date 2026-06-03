@@ -83,7 +83,9 @@ export default function App() {
     isProcessing,
     pendingSwitch,
     setPendingSwitch,
-    handleSendMessage: baseHandleSendMessage
+    handleSendMessage: baseHandleSendMessage,
+    deleteMessage,
+    rerunMessage
   } = useAgentChat({
     activeAgent,
     toolState,
@@ -288,6 +290,8 @@ export default function App() {
               activeAgent={activeAgent}
               isProcessing={isProcessing}
               aiProvider={settings.aiProvider}
+              onDeleteMessage={deleteMessage}
+              onRerunMessage={rerunMessage}
             />
             <div ref={messagesEndRef} />
             </div>
