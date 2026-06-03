@@ -83,7 +83,7 @@ export const sendMessageToOllama = async (
 
     const recentHistory = history
       .filter(msg => msg.role === 'user' || msg.role === 'assistant')
-      .slice(-10)
+    .slice(-15)
       .map(msg => ({
         role: msg.role,
         content: msg.content
@@ -153,6 +153,7 @@ export const sendMessageToOllama = async (
 export interface OllamaStreamChunk {
   text: string;
   done: boolean;
+  suggestedAgent?: AgentMode;
   toolCalls?: Array<{
     name: string;
     arguments: Record<string, unknown>;
@@ -240,6 +241,14 @@ export async function* sendMessageToOllamaStream(
 
             if (typeof msg.content === "string") {
               yield { text: msg.content, done: false };
+            }
+            // Check for agent switch suggestion in content
+            if (typeof msg.content === "string") {
+              const switchMatch = msg.content.match(/\[\[SWITCH_TO:(.*?)\]\]/);
+              if (switchMatch) {
+                yield { text: "", done: true, suggestedAgent: switchMatch[1] as AgentMode };
+                return;
+              }
             }
             if (Array.isArray(msg.tool_calls)) {
               const toolCalls = (msg.tool_calls as Array<Record<string, unknown>>)

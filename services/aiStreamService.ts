@@ -9,7 +9,9 @@ const TECHNICAL_AGENTS = [
   AgentMode.ARCHITECT,
   AgentMode.TEST,
   AgentMode.SECURE,
-  AgentMode.DEPLOY
+  AgentMode.DEPLOY,
+  AgentMode.MONITOR,
+  AgentMode.PLAN
 ];
 
 /**

@@ -32,11 +32,12 @@ interface UseAgentChatReturn {
 // Helper to infer agent from task title
 const inferAgentForTask = (title: string): AgentMode => {
   const lower = title.toLowerCase();
+  if (lower.includes('plan') || lower.includes('requirement') || lower.includes('user stor') || lower.includes('acceptance criteria')) return AgentMode.PLAN;
   if (lower.includes('test') || lower.includes('verify')) return AgentMode.TEST;
   if (lower.includes('deploy') || lower.includes('docker') || lower.includes('ci/cd')) return AgentMode.DEPLOY;
   if (lower.includes('design') || lower.includes('architecture')) return AgentMode.ARCHITECT;
-  if (lower.includes('monitor') || lower.includes('log')) return AgentMode.MONITOR;
-  if (lower.includes('secure') || lower.includes('auth')) return AgentMode.SECURE;
+  if (lower.includes('monitor') || lower.includes('log') || lower.includes('performance')) return AgentMode.MONITOR;
+  if (lower.includes('secure') || lower.includes('auth') || lower.includes('vulnerability')) return AgentMode.SECURE;
   return AgentMode.CODER; // Default to Coder
 };
 

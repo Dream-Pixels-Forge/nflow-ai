@@ -70,7 +70,7 @@ const AGENT_MODE_TO_ID: Record<AgentMode, string> = {
   [AgentMode.CHAT]: 'CHAT',
   [AgentMode.PLAN]: 'PLAN',
   [AgentMode.ARCHITECT]: 'ARCHITECT',
-  [AgentMode.CODER]: 'CODE',
+  [AgentMode.CODER]: 'CODER',
   [AgentMode.TEST]: 'TEST',
   [AgentMode.SECURE]: 'SECURE',
   [AgentMode.DEPLOY]: 'DEPLOY',
@@ -128,7 +128,7 @@ export const AgentGrid: React.FC<AgentGridProps> = ({ activeAgent }) => {
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-500 leading-tight mt-1">
-                  {agent.id} MODULE
+                  {agent.description}
                 </p>
                 {/* Phase Badge */}
                 <div className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[8px] font-mono ${getPhaseColor(phase)}`}>

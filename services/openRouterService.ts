@@ -187,6 +187,7 @@ export const getOpenRouterModels = async (apiKey: string): Promise<string[]> => 
 export interface OpenRouterStreamChunk {
   text: string;
   done: boolean;
+  suggestedAgent?: AgentMode;
   toolCalls?: Array<{
     id: string;
     name: string;
@@ -296,6 +297,12 @@ export async function* sendMessageToOpenRouterStream(
             // Text chunk
             if (typeof delta.content === "string") {
               yield { text: delta.content, done: false };
+              // Check for agent switch suggestion in accumulated content
+              const switchMatch = delta.content.match(/\[\[SWITCH_TO:(.*?)\]\]/);
+              if (switchMatch) {
+                yield { text: "", done: true, suggestedAgent: switchMatch[1] as AgentMode };
+                return;
+              }
             }
 
             // Tool call chunks (streamed incrementally)

@@ -75,7 +75,7 @@ export class AgentOrchestrator {
 
   private initializeOrchestrator(): void {
     // Initialize default agent states for each mode
-    const agentModes = ['CHAT', 'PLAN', 'ARCHITECT', 'CODE', 'TEST', 'SECURE', 'DEPLOY', 'MONITOR'];
+    const agentModes = ['CHAT', 'PLAN', 'ARCHITECT', 'CODER', 'TEST', 'SECURE', 'DEPLOY', 'MONITOR'];
     
     agentModes.forEach(mode => {
       this.agents.set(mode, {
@@ -96,7 +96,7 @@ export class AgentOrchestrator {
       'CHAT': 'P',
       'PLAN': 'P',
       'ARCHITECT': 'R',
-      'CODE': 'I',
+      'CODER': 'I',
       'TEST': 'I',
       'SECURE': 'S',
       'DEPLOY': 'D',

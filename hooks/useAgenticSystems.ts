@@ -54,6 +54,7 @@ export interface AgenticActions {
   // Emergency stop actions
   triggerEmergencyStop: (agentId: string, severity: 'low' | 'medium' | 'high' | 'critical', reason: string) => Promise<EmergencyEvent>;
   resolveEmergency: (eventId: string) => boolean;
+  haltAll: () => void;
   
   // Drift detection actions
   toggleDriftDetection: (enabled: boolean) => void;
@@ -238,6 +239,14 @@ export function useAgenticSystems(): [AgenticState, AgenticActions] {
     recordPulse,
     triggerEmergencyStop,
     resolveEmergency,
+    haltAll: () => {
+      // Trigger emergency stop for all agents
+      const agents = ['CHAT', 'PLAN', 'ARCHITECT', 'CODER', 'TEST', 'SECURE', 'DEPLOY', 'MONITOR'];
+      agents.forEach(agentId => {
+        emergencyStop.triggerEmergencyStop(agentId, 'critical', 'User triggered emergency halt');
+      });
+      setIsHalted(true);
+    },
     toggleDriftDetection,
     resolveDriftEvent,
     attemptPhaseTransition,

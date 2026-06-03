@@ -62,7 +62,7 @@ export const sendMessageToGeminiStream = async function* (
       parts: [{ text: msg.content }]
     }));
 
-  const systemInstruction = getSystemInstruction(agent, tools, projectSummary, currentTasks, suggestionLevel) + contextInjection;
+  const systemInstruction = getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel) + contextInjection;
 
   try {
     const response = await ai.models.generateContentStream({
@@ -97,7 +97,7 @@ export const sendMessageToGeminiStream = async function* (
     if (urls) sources.push(...urls);
 
     // Check for agent suggestion
-    const agentMatch = fullText.match(/\[SUGGEST_SWITCH:(\w+)\]/);
+    const agentMatch = fullText.match(/\[\[SWITCH_TO:(.*?)\]\]/);
     if (agentMatch) {
       suggestedAgent = agentMatch[1] as AgentMode;
     }
