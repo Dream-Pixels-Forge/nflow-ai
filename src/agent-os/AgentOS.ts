@@ -74,25 +74,10 @@ export class AgentOS {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    console.log('[AgentOS] Initializing Personal Agent OS...');
-
-    // Load identity if enabled
-    if (this.config.enableIdentity) {
-      console.log('[AgentOS] Loading identity system...');
-    }
-
-    // Load context if enabled
-    if (this.config.enableContext) {
-      console.log('[AgentOS] Loading context portfolio...');
-    }
-
-    // Load skills if enabled
-    if (this.config.enableSkills) {
-      console.log('[AgentOS] Loading skills library...');
-    }
+    // Load subsystems if enabled (no-op guards in place)
+    // Identity, context, skills, memory, connections are lazily initialized
 
     this.initialized = true;
-    console.log('[AgentOS] Initialization complete.');
   }
 
   // ==================== Layer 1: Identity ====================

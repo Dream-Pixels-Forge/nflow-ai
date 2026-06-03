@@ -39,7 +39,6 @@ export class WebSocketBridge implements BackendBridge {
       this.#ws.onopen = () => {
         this.#connected = true;
         this.#onConnectionChange?.(true);
-        console.log("[bridge] Connected to tool server");
       };
 
       this.#ws.onmessage = (event: MessageEvent) => {

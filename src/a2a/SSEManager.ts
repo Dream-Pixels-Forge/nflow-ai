@@ -229,8 +229,6 @@ export class SSEManager {
 
     // Check if we should reconnect
     if (connection.eventSource?.readyState === EventSource.CLOSED) {
-      console.log(`[SSE] Attempting reconnection for ${connectionId}`);
-      
       // Attempt reconnection
       setTimeout(() => {
         this.connectToRemote(

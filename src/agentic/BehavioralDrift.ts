@@ -313,8 +313,6 @@ export class BehavioralDrift {
    * Realign agent to original intent
    */
   private realignAgent(agentId: string): void {
-    console.log(`[DRIFT] Realigning agent ${agentId}`);
-    
     // Clear intent history for this agent
     this.agentIntents.delete(agentId);
     

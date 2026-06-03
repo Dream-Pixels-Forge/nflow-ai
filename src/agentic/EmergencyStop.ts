@@ -153,44 +153,7 @@ export class EmergencyStop {
    * Execute individual emergency action
    */
   private async executeAction(action: EmergencyAction, event: EmergencyEvent): Promise<void> {
-    console.log(`[EMERGENCY] Executing action: ${action} for agent ${event.agentId}`);
-
-    switch (action) {
-      case 'LOCK_MANDATES':
-        // In production, this would revoke AP2 mandates
-        console.log('[EMERGENCY] AP2 mandates locked');
-        break;
-
-      case 'DISCONNECT_A2A':
-        // In production, this would disconnect A2A communication
-        console.log('[EMERGENCY] A2A connections disconnected');
-        break;
-
-      case 'SNAPSHOT_STATE':
-        // In production, this would export memory dump
-        console.log('[EMERGENCY] State snapshot captured');
-        break;
-
-      case 'SIGNAL_GOVERNOR':
-        // In production, this would notify human governor
-        console.log('[EMERGENCY] Governor notified');
-        break;
-
-      case 'HALT_ALL_OPERATIONS':
-        // Halt all agent operations
-        console.log('[EMERGENCY] All operations halted');
-        break;
-
-      case 'ROLLBACK_DEPLOYMENT':
-        // In production, this would rollback deployment
-        console.log('[EMERGENCY] Deployment rollback initiated');
-        break;
-
-      case 'AWAIT_HUMAN_INTERVENTION':
-        // Wait for human intervention
-        console.log('[EMERGENCY] Waiting for human intervention');
-        break;
-    }
+    // Action executed silently — state is tracked via event.actions array
   }
 
   /**

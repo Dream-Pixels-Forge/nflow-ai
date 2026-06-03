@@ -183,28 +183,22 @@ export class DeploymentManager {
    * Deploy to managed platform (Vertex AI Agent Engine)
    */
   private async deployToManaged(deployment: Deployment): Promise<void> {
-    console.log(`[Deploy] Deploying to Vertex AI Agent Engine...`);
     // Simulate deployment delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log(`[Deploy] Deployed to managed platform`);
   }
 
   /**
    * Deploy to serverless (Cloud Run)
    */
   private async deployToServerless(deployment: Deployment): Promise<void> {
-    console.log(`[Deploy] Deploying to Cloud Run...`);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log(`[Deploy] Deployed to serverless platform`);
   }
 
   /**
    * Deploy to Kubernetes (GKE)
    */
   private async deployToKubernetes(deployment: Deployment): Promise<void> {
-    console.log(`[Deploy] Deploying to GKE...`);
     await new Promise(resolve => setTimeout(resolve, 3000));
-    console.log(`[Deploy] Deployed to Kubernetes platform`);
   }
 
   /**

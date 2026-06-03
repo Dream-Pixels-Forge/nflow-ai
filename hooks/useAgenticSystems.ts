@@ -96,12 +96,12 @@ export function useAgenticSystems(): [AgenticState, AgenticActions] {
       setAgentStates(new Map(states));
     });
 
-    agentOrchestrator.onDrift((agentId, drift) => {
-      console.log(`[AGENTIC] Drift detected for ${agentId}: ${drift}`);
+    agentOrchestrator.onDrift((_agentId, _drift) => {
+      // Drift events are handled via state updates
     });
 
-    agentOrchestrator.onTimeout((agentId, phase) => {
-      console.log(`[AGENTIC] Timeout for ${agentId} in phase ${phase}`);
+    agentOrchestrator.onTimeout((_agentId, _phase) => {
+      // Timeout events are handled via state updates
     });
 
     emergencyStop.onEmergency((event) => {

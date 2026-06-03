@@ -316,8 +316,6 @@ export class GradientDecayCircuitBreaker {
     };
 
     cb.events.push(event);
-
-    console.log(`[CircuitBreaker] ${cb.name}: CLOSED - Recovery successful`);
   }
 
   /**
