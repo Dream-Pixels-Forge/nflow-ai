@@ -19,7 +19,6 @@ interface UseAgentChatReturn {
   pendingSwitch: AgentMode | null;
   setPendingSwitch: (agent: AgentMode | null) => void;
   handleSendMessage: () => Promise<void>;
-  handleKeyDownInput: (e: React.KeyboardEvent) => void;
 }
 
 // Helper to infer agent from task title
@@ -193,13 +192,6 @@ export const useAgentChat = ({
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
 
-  const handleKeyDownInput = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   return {
     input,
     setInput,
@@ -207,7 +199,6 @@ export const useAgentChat = ({
     isProcessing,
     pendingSwitch,
     setPendingSwitch,
-    handleSendMessage,
-    handleKeyDownInput
+    handleSendMessage
   };
 };

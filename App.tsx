@@ -83,8 +83,7 @@ export default function App() {
     isProcessing,
     pendingSwitch,
     setPendingSwitch,
-    handleSendMessage: baseHandleSendMessage,
-    handleKeyDownInput
+    handleSendMessage: baseHandleSendMessage
   } = useAgentChat({
     activeAgent,
     toolState,
@@ -139,6 +138,14 @@ export default function App() {
     
     // Otherwise send as message
     await baseHandleSendMessage();
+  };
+
+  // Handle key down for input
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   // Startup tracking and dependency checks
@@ -291,7 +298,7 @@ export default function App() {
             activeAgent={activeAgent}
             isProcessing={isProcessing}
             transitionTarget={transitionTarget}
-            onKeyDown={handleKeyDownInput}
+            onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
           />
 
