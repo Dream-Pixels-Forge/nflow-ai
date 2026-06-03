@@ -200,19 +200,22 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div className={`w-8 h-8 rounded bg-nexus-800 border border-nexus-border flex items-center justify-center ${AGENTS[activeAgent].color}`}>
             <Loader2 size={16} className="animate-spin" />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-xs text-nexus-dim font-mono">
               <span className={`${AGENTS[activeAgent].color} font-bold`}>{AGENTS[activeAgent].name}</span>
-              <span>IS THINKING</span>
-              <span className="text-[9px] px-1.5 py-0.5 bg-nexus-800 border border-nexus-border rounded">
+              <span className="text-gray-400">IS THINKING</span>
+              <span className="text-[9px] px-1.5 py-0.5 bg-nexus-800 border border-nexus-border rounded text-gray-500">
                 {aiProvider === 'ollama' ? 'LOCAL' : 'CLOUD'}
               </span>
             </div>
-            {/* Animated dots */}
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            {/* Animated thinking indicator */}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-nexus-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono">Processing request...</span>
             </div>
           </div>
         </div>
