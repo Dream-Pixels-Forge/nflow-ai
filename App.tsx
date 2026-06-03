@@ -20,6 +20,9 @@ import { useAgentChat } from './hooks/useAgentChat';
 import { useCommandParser } from './hooks/useCommandParser';
 import { memoryManager, agentCardManager } from './src/agentic';
 import { useAgenticSystems } from './hooks/useAgenticSystems';
+import { HITLDialog } from './components/HITLDialog';
+import { hitlManager, HITLRequest } from './src/pipelines/HITLManager';
+import { toolExecutor } from './src/tools/toolExecutor';
 
 // Helper to cycle enum
 const getNextAgent = (current: AgentMode): AgentMode => {
@@ -69,6 +72,9 @@ export default function App() {
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
+  // HITL State
+  const [pendingHITL, setPendingHITL] = useState<HITLRequest | null>(null);
+
   // Orchestrator State
   const [transitionTarget, setTransitionTarget] = useState<AgentMode | null>(null);
 
@@ -212,6 +218,25 @@ export default function App() {
     }
   };
 
+  // Wire HITLManager to ToolExecutor
+  useEffect(() => {
+    // Set up HITL request handler
+    hitlManager.onRequest = (request) => {
+      setPendingHITL(request);
+    };
+
+    // Wire ToolExecutor approval to HITL
+    toolExecutor.setApprovalHandler(async (approvalReq) => {
+      const response = await hitlManager.requestApproval(
+        approvalReq.toolName,
+        'tool-execution',
+        `Approve: ${approvalReq.toolName}`,
+        `${approvalReq.command}\n\nReason: ${approvalReq.reason}`
+      );
+      return response.approved ? 'approved' : 'denied';
+    });
+  }, []);
+
   // Startup tracking and dependency checks
   useEffect(() => {
     initializeStartupTracking();
@@ -314,6 +339,14 @@ export default function App() {
               onUpdate={setSettings}
               onClose={() => setShowSettings(false)}
            />
+        )}
+
+        {/* HITL Approval Dialog */}
+        {pendingHITL && (
+          <HITLDialog
+            request={pendingHITL}
+            onResponded={() => setPendingHITL(null)}
+          />
         )}
 
         {/* Left Sidebar: Agent Grid */}

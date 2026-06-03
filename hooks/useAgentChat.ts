@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
-import { memoryManager } from '../src/agentic';
+import { memoryManager, agentOrchestrator } from '../src/agentic';
 import { loadMessages, saveMessage, loadSettings, saveSettings } from '../src/persistence';
 
 interface UseAgentChatProps {
@@ -230,6 +230,18 @@ ${taskList || 'No tasks defined'}`;
     let streamedContent = "";
 
     try {
+      // Start heartbeat for this agent
+      agentOrchestrator.startHeartbeat(activeAgent);
+      agentOrchestrator.recordPulse({
+        timestamp: new Date().toISOString(),
+        agentId: activeAgent,
+        phase: 'I',
+        status: 'HEALTHY',
+        currentIntent: currentInput.slice(0, 100),
+        lastReasoningHash: '',
+        resourceUsage: { tokens: 0, latencyMs: 0 }
+      });
+
       // Use streaming AI Service
       const stream = sendMessageToAgentStream(
         currentInput, 
@@ -344,6 +356,19 @@ ${taskList || 'No tasks defined'}`;
           // Accumulate streamed text
           streamedContent += chunk.text;
 
+          // Update agent heartbeat periodically
+          if (streamedContent.length % 200 === 0) {
+            agentOrchestrator.recordPulse({
+              timestamp: new Date().toISOString(),
+              agentId: activeAgent,
+              phase: 'I',
+              status: 'HEALTHY',
+              currentIntent: `Generating: ${streamedContent.slice(0, 50)}...`,
+              lastReasoningHash: '',
+              resourceUsage: { tokens: streamedContent.length / 4, latencyMs: 0 }
+            });
+          }
+
           // Update the streaming message in history
           setAgentHistories(prev => {
             const messages = prev[activeAgent];
@@ -401,6 +426,8 @@ ${taskList || 'No tasks defined'}`;
       }));
     } finally {
       setIsProcessing(false);
+      // Stop heartbeat when done
+      agentOrchestrator.stopHeartbeat(activeAgent);
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
 
