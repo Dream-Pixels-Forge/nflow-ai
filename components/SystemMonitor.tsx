@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Activity, 
@@ -8,29 +8,30 @@ import {
   Wifi, 
   Zap, 
   Monitor,
-  Heart,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Shield,
-  GitBranch
+  GitBranch,
+  MessageSquare,
+  Timer
 } from 'lucide-react';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { AgentStatus, AgentPhase, PHASE_CONFIGS } from '../src/agentic';
-import { AgentMode } from '../types';
+import { AgentMode, Message } from '../types';
 import { taskManager } from '../src/a2a/TaskManager';
 import { contextManager } from '../src/agentic/ContextManager';
 import { learningManager } from '../src/agentic/LearningManager';
 import { collaborationManager } from '../src/agentic/CollaborationManager';
 
-const generateData = () => {
-  return Array.from({ length: 20 }, (_, i) => ({
-    time: i,
-    cpu: 20 + Math.random() * 30,
-    mem: 40 + Math.random() * 20,
-    net: 10 + Math.random() * 50
-  }));
-};
+// Rolling window for throughput tracking
+interface ThroughputPoint {
+  time: number;
+  messages: number;
+  tokens: number;
+}
+
+const MAX_CHART_POINTS = 20;
 
 const getStatusColor = (status: AgentStatus): string => {
   switch (status) {
@@ -54,22 +55,23 @@ const getStatusIcon = (status: AgentStatus) => {
   }
 };
 
-const getPhaseColor = (phase: AgentPhase): string => {
-  const colors: Record<AgentPhase, string> = {
-    P: 'text-purple-500',
-    R: 'text-blue-500',
-    I: 'text-green-500',
-    D: 'text-orange-500',
-    E: 'text-cyan-500',
-    S: 'text-red-500'
-  };
-  return colors[phase] || 'text-gray-500';
-};
+interface SystemMonitorProps {
+  messages?: Message[];
+}
 
-export const SystemMonitor: React.FC = () => {
-  const [data, setData] = useState(generateData());
-  const [vram, setVram] = useState(12.4);
+export const SystemMonitor: React.FC<SystemMonitorProps> = ({ messages = [] }) => {
+  const [throughput, setThroughput] = useState<ThroughputPoint[]>(() => 
+    Array.from({ length: MAX_CHART_POINTS }, (_, i) => ({ time: i, messages: 0, tokens: 0 }))
+  );
+  const [prevMsgCount, setPrevMsgCount] = useState(0);
+  const [prevTokenCount, setPrevTokenCount] = useState(0);
   const [osName, setOsName] = useState('UNKNOWN');
+  const [memoryMB, setMemoryMB] = useState(0);
+  const [memoryLimitMB, setMemoryLimitMB] = useState(0);
+  const [latencyMs, setLatencyMs] = useState(0);
+  const [dbName, setDbName] = useState('UNKNOWN');
+  const [dbVersion, setDbVersion] = useState(0);
+  const [uptime, setUptime] = useState(0);
   
   // Agentic systems
   const [agenticState] = useAgenticSystems();
@@ -78,10 +80,19 @@ export const SystemMonitor: React.FC = () => {
   // A2A task stats
   const [a2aStats, setA2aStats] = useState(taskManager.getStats());
 
-  // Context compression stats
+  // Context stats across all sessions
   const [contextStats, setContextStats] = useState(() => {
     const sessions = contextManager.getActiveSessions();
-    return sessions.length > 0 ? contextManager.getContextStats(sessions[0].id) : null;
+    if (sessions.length > 0) {
+      // Use the session with most tokens
+      return sessions.reduce((best, s) => {
+        const stats = contextManager.getContextStats(s.id);
+        if (!stats) return best;
+        if (!best || stats.tokenCount > best.tokenCount) return stats;
+        return best;
+      }, null as ReturnType<typeof contextManager.getContextStats>);
+    }
+    return null;
   });
 
   // Learning stats
@@ -90,59 +101,128 @@ export const SystemMonitor: React.FC = () => {
   // Collaboration stats
   const [collabStats, setCollabStats] = useState(collaborationManager.getStats());
 
+  // Detect OS and memory on mount
   useEffect(() => {
-    // Detect OS
     const platform = navigator.platform.toLowerCase();
     const userAgent = navigator.userAgent.toLowerCase();
     
-    if (platform.includes('mac') || userAgent.includes('mac')) setOsName('MACOS KERNEL');
-    else if (platform.includes('win') || userAgent.includes('win')) setOsName('WINDOWS NT');
-    else if (platform.includes('linux') || userAgent.includes('linux')) setOsName('LINUX KERNEL');
-    else setOsName('WEB ASSEMBLY');
+    if (platform.includes('mac') || userAgent.includes('mac')) setOsName('MACOS');
+    else if (platform.includes('win') || userAgent.includes('win')) setOsName('WINDOWS');
+    else if (platform.includes('linux') || userAgent.includes('linux')) setOsName('LINUX');
+    else setOsName('WEB');
 
+    // Check browser memory (Chrome only)
+    const perfMemory = (performance as any).memory;
+    if (perfMemory) {
+      setMemoryMB(Math.round(perfMemory.usedJSHeapSize / 1048576));
+      setMemoryLimitMB(Math.round(perfMemory.jsHeapSizeLimit / 1048576));
+    }
+
+    // Check IndexedDB asynchronously
+    indexedDB.databases?.().then(dbs => {
+      if (dbs.length > 0) {
+        setDbName(dbs[0].name || 'NEXUS');
+        setDbVersion(dbs[0].version || 1);
+      } else {
+        setDbName('EMPTY');
+        setDbVersion(0);
+      }
+    }).catch(() => {
+      setDbName('N/A');
+    });
+
+    // Measure a quick fetch to get baseline latency
+    const start = performance.now();
+    fetch('/favicon.ico', { method: 'HEAD', cache: 'no-store' })
+      .then(() => setLatencyMs(Math.round(performance.now() - start)))
+      .catch(() => setLatencyMs(0));
+  }, []);
+
+  // Periodic refresh
+  useEffect(() => {
     const interval = setInterval(() => {
-      setData(prev => {
-        const next = [...prev.slice(1), {
-          time: prev[prev.length - 1].time + 1,
-          cpu: 20 + Math.random() * 40,
-          mem: 40 + Math.random() * 10,
-          net: Math.random() * 80
-        }];
-        return next;
-      });
+      // Uptime
+      setUptime(prev => prev + 1);
 
-      setVram(prev => {
-        const change = (Math.random() - 0.5) * 1.5;
-        let next = prev + change;
-        if (next < 6) next = 6;
-        if (next > 23.5) next = 23.5;
-        return next;
-      });
-
-      // Refresh A2A stats
-      setA2aStats(taskManager.getStats());
-
-      // Refresh context stats
-      const sessions = contextManager.getActiveSessions();
-      if (sessions.length > 0) {
-        setContextStats(contextManager.getContextStats(sessions[0].id));
+      // Memory (Chrome)
+      const perfMemory = (performance as any).memory;
+      if (perfMemory) {
+        setMemoryMB(Math.round(perfMemory.usedJSHeapSize / 1048576));
+        setMemoryLimitMB(Math.round(perfMemory.jsHeapSizeLimit / 1048576));
       }
 
-      // Refresh learning stats
-      setLearningStats(learningManager.getStats());
+      // Message throughput
+      const totalMsgs = messages.length;
+      const totalTokens = messages.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
+      const msgsDelta = totalMsgs - prevMsgCount;
+      const tokensDelta = totalTokens - prevTokenCount;
 
-      // Refresh collaboration stats
+      setThroughput(prev => [
+        ...prev.slice(1),
+        { time: prev[prev.length - 1].time + 1, messages: msgsDelta, tokens: Math.round(tokensDelta / 100) }
+      ]);
+      setPrevMsgCount(totalMsgs);
+      setPrevTokenCount(totalTokens);
+
+      // Context stats
+      const sessions = contextManager.getActiveSessions();
+      if (sessions.length > 0) {
+        const stats = sessions.reduce((best, s) => {
+          const sStats = contextManager.getContextStats(s.id);
+          if (!sStats) return best;
+          if (!best || sStats.tokenCount > best.tokenCount) return sStats;
+          return best;
+        }, null as ReturnType<typeof contextManager.getContextStats>);
+        setContextStats(stats);
+      } else {
+        setContextStats(null);
+      }
+
+      // A2A
+      setA2aStats(taskManager.getStats());
+      // Learning
+      setLearningStats(learningManager.getStats());
+      // Collaboration
       setCollabStats(collaborationManager.getStats());
 
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [messages, prevMsgCount, prevTokenCount]);
+
+  // Calculate context window from messages if no session exists
+  const contextWindow = useMemo(() => {
+    if (contextStats) {
+      return {
+        tokenCount: contextStats.tokenCount,
+        maxTokens: contextStats.maxTokens,
+        usagePct: contextStats.usagePercentage,
+        messageCount: contextStats.messageCount
+      };
+    }
+    // Fallback: estimate from messages array
+    const charCount = messages.reduce((sum, m) => sum + m.content.length, 0);
+    const tokenCount = Math.ceil(charCount / 4);
+    const maxTokens = 100000;
+    return {
+      tokenCount,
+      maxTokens,
+      usagePct: (tokenCount / maxTokens) * 100,
+      messageCount: messages.length
+    };
+  }, [contextStats, messages]);
 
   // Get agent status counts
   const agentStatusCounts = Array.from(agentStates.values()).reduce((acc, agent) => {
     acc[agent.status] = (acc[agent.status] || 0) + 1;
     return acc;
   }, {} as Record<AgentStatus, number>);
+
+  // Format uptime
+  const formatUptime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
+  };
 
   return (
     <div className="flex flex-col gap-4 p-4 bg-nexus-800/50 border-l border-nexus-border min-h-full">
@@ -178,6 +258,9 @@ export const SystemMonitor: React.FC = () => {
               <span className="text-white font-mono">{count as number}</span>
             </div>
           ))}
+          {Object.keys(agentStatusCounts).length === 0 && (
+            <div className="col-span-2 text-[10px] text-gray-500">No active agents</div>
+          )}
         </div>
 
         {/* Drift Events */}
@@ -185,7 +268,7 @@ export const SystemMonitor: React.FC = () => {
           <div className="border-t border-nexus-border pt-2 mt-2">
             <div className="flex items-center gap-2 text-yellow-500 text-xs mb-1">
               <AlertTriangle size={12} />
-              <span className="font-mono">DRIFT EVENTS: {driftEvents.length}</span>
+              <span className="font-mono">DRIFT: {driftEvents.length}</span>
             </div>
             <div className="text-[10px] text-gray-500">
               {driftEvents.slice(-2).map((event, i) => (
@@ -212,7 +295,7 @@ export const SystemMonitor: React.FC = () => {
           <div className="border-t border-nexus-border pt-2 mt-2">
             <div className="flex items-center gap-2 text-cyan-500 text-xs mb-1">
               <GitBranch size={12} />
-              <span className="font-mono">A2A TASKS: {a2aStats.total}</span>
+              <span className="font-mono">A2A: {a2aStats.total} tasks</span>
             </div>
             <div className="grid grid-cols-3 gap-1 text-[10px]">
               <span className="text-green-400">Active: {a2aStats.byState.working + a2aStats.byState.submitted}</span>
@@ -222,40 +305,41 @@ export const SystemMonitor: React.FC = () => {
           </div>
         )}
 
-        {/* Context Health */}
-        {contextStats && (
-          <div className="border-t border-nexus-border pt-2 mt-2">
-            <div className="flex items-center gap-2 text-purple-500 text-xs mb-1">
-              <HardDrive size={12} />
-              <span className="font-mono">CONTEXT WINDOW</span>
-            </div>
-            <div className="h-1.5 w-full bg-nexus-800 rounded-sm overflow-hidden mb-1">
-              <div 
-                className={`h-full transition-all duration-300 ${
-                  contextStats.usagePercentage > 80 ? 'bg-red-500' :
-                  contextStats.usagePercentage > 50 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(contextStats.usagePercentage, 100)}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-1 text-[10px]">
-              <span className="text-gray-400">Tokens: <span className="text-white font-mono">{(contextStats.tokenCount / 1000).toFixed(1)}K</span></span>
-              <span className="text-gray-400">Usage: <span className={`font-mono ${contextStats.usagePercentage > 80 ? 'text-red-400' : 'text-white'}`}>{contextStats.usagePercentage.toFixed(0)}%</span></span>
-              <span className="text-gray-400">Messages: <span className="text-white font-mono">{contextStats.messageCount}</span></span>
-              <span className="text-gray-400">Auto-compress: <span className="text-green-400 font-mono">ON</span></span>
-            </div>
+        {/* Context Window - Always Visible */}
+        <div className="border-t border-nexus-border pt-2 mt-2">
+          <div className="flex items-center gap-2 text-purple-500 text-xs mb-1">
+            <HardDrive size={12} />
+            <span className="font-mono">CONTEXT WINDOW</span>
+            {contextStats && (
+              <span className="text-[9px] text-gray-500 ml-auto">{contextStats.messageCount} msgs</span>
+            )}
           </div>
-        )}
+          <div className="h-1.5 w-full bg-nexus-800 rounded-sm overflow-hidden mb-1">
+            <div 
+              className={`h-full transition-all duration-300 ${
+                contextWindow.usagePct > 80 ? 'bg-red-500' :
+                contextWindow.usagePct > 50 ? 'bg-yellow-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(contextWindow.usagePct, 100)}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-1 text-[10px]">
+            <span className="text-gray-400">Tokens: <span className="text-white font-mono">{(contextWindow.tokenCount / 1000).toFixed(1)}K</span></span>
+            <span className="text-gray-400">Usage: <span className={`font-mono ${contextWindow.usagePct > 80 ? 'text-red-400' : 'text-white'}`}>{contextWindow.usagePct.toFixed(0)}%</span></span>
+            <span className="text-gray-400">Max: <span className="text-gray-500 font-mono">{(contextWindow.maxTokens / 1000).toFixed(0)}K</span></span>
+            <span className="text-gray-400">Compress: <span className="text-green-400 font-mono">AUTO</span></span>
+          </div>
+        </div>
 
         {/* Learning System */}
         <div className="border-t border-nexus-border pt-2 mt-2">
           <div className="flex items-center gap-2 text-emerald-500 text-xs mb-1">
             <CheckCircle size={12} />
-            <span className="font-mono">CONTINUOUS LEARNING</span>
+            <span className="font-mono">LEARNING</span>
           </div>
           <div className="grid grid-cols-2 gap-1 text-[10px]">
-            <span className="text-gray-400">Active lessons: <span className="text-white font-mono">{learningStats.activeLessons}</span></span>
-            <span className="text-gray-400">Total errors: <span className="text-white font-mono">{learningStats.totalEntries}</span></span>
+            <span className="text-gray-400">Lessons: <span className="text-white font-mono">{learningStats.activeLessons}</span></span>
+            <span className="text-gray-400">Errors: <span className="text-white font-mono">{learningStats.totalEntries}</span></span>
           </div>
           {Object.keys(learningStats.byErrorType).length > 0 && (
             <div className="mt-1 text-[9px] text-gray-500">
@@ -273,7 +357,7 @@ export const SystemMonitor: React.FC = () => {
         <div className="border-t border-nexus-border pt-2 mt-2">
           <div className="flex items-center gap-2 text-cyan-500 text-xs mb-1">
             <GitBranch size={12} />
-            <span className="font-mono">AGENT COLLABORATION</span>
+            <span className="font-mono">COLLABORATION</span>
           </div>
           <div className="grid grid-cols-2 gap-1 text-[10px]">
             <span className="text-gray-400">Signals: <span className="text-white font-mono">{collabStats.totalSignals}</span></span>
@@ -297,24 +381,34 @@ export const SystemMonitor: React.FC = () => {
         </div>
       </div>
 
-      {/* CPU Chart */}
-      <div className="h-40 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative overflow-hidden shrink-0">
-         <div className="absolute top-2 right-2 text-xs font-mono text-green-500 opacity-50">CPU_LOAD_AVG</div>
+      {/* Message Throughput Chart */}
+      <div className="h-36 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative overflow-hidden shrink-0">
+        <div className="absolute top-2 right-2 text-xs font-mono text-green-500 opacity-50 flex items-center gap-1">
+          <MessageSquare size={10} /> MSG/S
+        </div>
+        <div className="absolute top-2 left-2 text-[10px] font-mono text-gray-500">
+          {messages.length} total
+        </div>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <Line type="monotone" dataKey="cpu" stroke="#00ff9d" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <YAxis domain={[0, 100]} hide />
+          <LineChart data={throughput}>
+            <Line type="monotone" dataKey="messages" stroke="#00ff9d" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <YAxis domain={[0, 'auto']} hide />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Memory Chart */}
-      <div className="h-40 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative shrink-0">
-         <div className="absolute top-2 right-2 text-xs font-mono text-purple-500 opacity-50">MEM_ALLOC</div>
+      {/* Token Throughput Chart */}
+      <div className="h-36 w-full bg-nexus-900 border border-nexus-border p-2 rounded-sm relative shrink-0">
+        <div className="absolute top-2 right-2 text-xs font-mono text-purple-500 opacity-50 flex items-center gap-1">
+          <Timer size={10} /> TOKENS/S (x100)
+        </div>
+        <div className="absolute top-2 left-2 text-[10px] font-mono text-gray-500">
+          {contextWindow.tokenCount > 0 ? `${(contextWindow.tokenCount / 1000).toFixed(1)}K total` : '0'}
+        </div>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <Line type="step" dataKey="mem" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
-             <YAxis domain={[0, 100]} hide />
+          <LineChart data={throughput}>
+            <Line type="step" dataKey="tokens" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <YAxis domain={[0, 'auto']} hide />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -325,10 +419,10 @@ export const SystemMonitor: React.FC = () => {
             <div className="flex items-center justify-between text-nexus-dim mb-1">
                 <div className="flex items-center gap-2">
                     <Monitor size={14} />
-                    <span className="text-[10px] font-mono uppercase">Host OS</span>
+                    <span className="text-[10px] font-mono uppercase">Platform</span>
                 </div>
-                <div className="text-[10px] font-mono text-white animate-pulse">
-                    ONLINE
+                <div className="text-[10px] font-mono text-white">
+                    {formatUptime(uptime)}
                 </div>
             </div>
             <div className="text-lg font-mono text-nexus-accent tracking-wider">
@@ -341,46 +435,61 @@ export const SystemMonitor: React.FC = () => {
                 <Cpu size={14} />
                 <span className="text-[10px] font-mono uppercase">Threads</span>
             </div>
-            <div className="text-xl font-mono text-white">{navigator.hardwareConcurrency || 8}</div>
+            <div className="text-xl font-mono text-white">{navigator.hardwareConcurrency || '?'}</div>
         </div>
         <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm">
             <div className="flex items-center gap-2 text-nexus-dim mb-1">
                 <HardDrive size={14} />
-                <span className="text-[10px] font-mono uppercase">Local DB</span>
+                <span className="text-[10px] font-mono uppercase">IndexedDB</span>
             </div>
-            <div className="text-xl font-mono text-nexus-accent">ACTIVE</div>
+            <div className="text-sm font-mono text-nexus-accent">
+              {dbName !== 'UNKNOWN' ? dbName : 'N/A'}
+              {dbVersion > 0 && <span className="text-gray-500 text-xs ml-1">v{dbVersion}</span>}
+            </div>
         </div>
         
-        {/* VRAM / GPU Section */}
+        {/* JS Heap Memory */}
         <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm col-span-2">
             <div className="flex items-center justify-between text-nexus-dim mb-2">
                 <div className="flex items-center gap-2">
                     <Zap size={14} />
-                    <span className="text-[10px] font-mono uppercase">VRAM Usage</span>
+                    <span className="text-[10px] font-mono uppercase">JS Heap</span>
                 </div>
                 <div className="text-[10px] font-mono text-white">
-                    {vram.toFixed(1)} <span className="text-nexus-dim">/ 24 GB</span>
+                    {memoryMB > 0 ? `${memoryMB} MB` : 'N/A'}
+                    {memoryLimitMB > 0 && <span className="text-nexus-dim"> / {memoryLimitMB} MB</span>}
                 </div>
             </div>
-            <div className="h-2 w-full bg-nexus-800 rounded-sm overflow-hidden border border-nexus-border/30 mb-1">
-                <div 
-                    className="h-full bg-nexus-accent/80 transition-all duration-1000 ease-in-out" 
-                    style={{ width: `${(vram / 24) * 100}%` }}
-                />
-            </div>
-            <div className="text-[9px] text-right text-nexus-dim font-mono">
-               {(24 - vram).toFixed(1)} GB AVAILABLE
-            </div>
+            {memoryLimitMB > 0 ? (
+              <>
+                <div className="h-2 w-full bg-nexus-800 rounded-sm overflow-hidden border border-nexus-border/30 mb-1">
+                    <div 
+                        className="h-full bg-nexus-accent/80 transition-all duration-1000 ease-in-out" 
+                        style={{ width: `${(memoryMB / memoryLimitMB) * 100}%` }}
+                    />
+                </div>
+                <div className="text-[9px] text-right text-nexus-dim font-mono">
+                   {(memoryLimitMB - memoryMB)} MB free
+                </div>
+              </>
+            ) : (
+              <div className="text-[10px] text-gray-500 italic">
+                Chrome DevTools for heap info
+              </div>
+            )}
         </div>
 
-         <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm col-span-2">
+        {/* Latency */}
+        <div className="bg-nexus-900 p-3 border border-nexus-border rounded-sm col-span-2">
             <div className="flex items-center gap-2 text-nexus-dim mb-1">
                 <Wifi size={14} />
-                <span className="text-[10px] font-mono uppercase">Latency</span>
+                <span className="text-[10px] font-mono uppercase">API Latency</span>
             </div>
             <div className="text-xl font-mono text-white flex justify-between">
-                <span>12ms</span>
-                <span className="text-[10px] text-nexus-dim mt-2">LOCALHOST</span>
+                <span>{latencyMs > 0 ? `${latencyMs}ms` : '—'}</span>
+                <span className="text-[10px] text-nexus-dim mt-2">
+                  {latencyMs > 0 ? 'MEASURED' : 'WAITING'}
+                </span>
             </div>
         </div>
       </div>

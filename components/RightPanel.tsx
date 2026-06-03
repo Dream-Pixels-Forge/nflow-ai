@@ -114,7 +114,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-        {rightPanelTab === 'telemetry' && <SystemMonitor />}
+        {rightPanelTab === 'telemetry' && <SystemMonitor messages={messages} />}
         {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} messages={messages} />}
         {rightPanelTab === 'github' && <GitHubPanel settings={settings} onUpdate={onUpdateSettings} />}
         {rightPanelTab === 'workflow' && <AgentWorkflow activeAgent={activeAgent || 'CHAT' as AgentMode} />}

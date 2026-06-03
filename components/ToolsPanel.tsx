@@ -360,16 +360,29 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState,
       
       <div className="mt-auto pt-4">
         <div className="p-2 rounded border border-nexus-dim/20 bg-nexus-900/50">
-          <div className="flex justify-between text-[10px] font-mono text-nexus-dim mb-1">
-              <span>CONTEXT WINDOW</span>
-              <span>{Math.min(100, Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 320))}% ({Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 1000)}K chars)</span>
-          </div>
-          <div className="h-1 bg-nexus-900 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-nexus-accent transition-all duration-500" 
-                style={{ width: `${Math.min(100, Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 320))}%` }}
-              ></div>
-          </div>
+          {(() => {
+            // Estimate tokens from messages + RAG content
+            const msgChars = (messages || []).reduce((sum, m) => sum + m.content.length, 0);
+            const ragChars = toolState.rag.content.reduce((sum, c) => sum + c.length, 0);
+            const totalChars = msgChars + ragChars;
+            const tokenCount = Math.ceil(totalChars / 4);
+            const maxTokens = 100000;
+            const usagePct = Math.min(100, Math.round((tokenCount / maxTokens) * 100));
+            return (
+              <>
+                <div className="flex justify-between text-[10px] font-mono text-nexus-dim mb-1">
+                    <span>CONTEXT</span>
+                    <span>{usagePct}% ({(tokenCount / 1000).toFixed(1)}K tokens)</span>
+                </div>
+                <div className="h-1 bg-nexus-900 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-nexus-accent transition-all duration-500" 
+                      style={{ width: `${usagePct}%` }}
+                    />
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
