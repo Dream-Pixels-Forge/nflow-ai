@@ -577,19 +577,32 @@ export const InputArea: React.FC<InputAreaProps> = ({
             </button>
 
             {/* Chat/Agent Mode Toggle */}
+            {/* Chat/Agent Mode Buttons - Side by Side */}
             {settings && onChatModeChange && (
-              <button
-                onClick={() => onChatModeChange(settings.chatMode === 'chat' ? 'agent' : 'chat')}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-mono transition-colors ${
-                  settings.chatMode === 'agent'
-                    ? 'bg-nexus-accent/20 border border-nexus-accent/50 text-nexus-accent'
-                    : 'bg-zinc-800 border border-zinc-700 text-gray-400 hover:border-zinc-600'
-                }`}
-                title={settings.chatMode === 'agent' ? 'Agent Mode: Orchestrator routes to specialists' : 'Chat Mode: Direct responses'}
-              >
-                {settings.chatMode === 'agent' ? '🤖' : '💬'}
-                <span>{settings.chatMode === 'agent' ? 'AGENT' : 'CHAT'}</span>
-              </button>
+              <div className="flex items-center gap-1 p-0.5 bg-zinc-800 border border-zinc-700 rounded">
+                <button
+                  onClick={() => onChatModeChange('chat')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono transition-all ${
+                    settings.chatMode === 'chat'
+                      ? 'bg-blue-500/20 border border-blue-500/50 text-blue-400'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                  title="Chat Mode: Deep brainstorming, no code generation"
+                >
+                  💬 CHAT
+                </button>
+                <button
+                  onClick={() => onChatModeChange('agent')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono transition-all ${
+                    settings.chatMode === 'agent'
+                      ? 'bg-nexus-accent/20 border border-nexus-accent/50 text-nexus-accent'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                  title="Agent Mode: Working mode with code generation"
+                >
+                  🤖 AGENT
+                </button>
+              </div>
             )}
 
             {/* Provider Drop-up */}
