@@ -7,7 +7,8 @@ import {
   CheckCircle,
   XCircle,
   Menu,
-  StopCircle
+  StopCircle,
+  FilePlus
 } from 'lucide-react';
 import { AGENTS, AgentMode, VirtualFile } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
@@ -38,6 +39,7 @@ interface HeaderProps {
   onShowProjectManager: () => void;
   onToggleSidebar?: () => void;
   onEmergencyStop?: () => void;
+  onNewSession?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   onShowSettings,
   onShowProjectManager,
   onToggleSidebar,
-  onEmergencyStop
+  onEmergencyStop,
+  onNewSession
 }) => {
   // Agentic systems
   const [agenticState] = useAgenticSystems();
@@ -126,6 +129,17 @@ export const Header: React.FC<HeaderProps> = ({
             title="Emergency Stop (Ctrl+Shift+X)"
           >
             <StopCircle size={16} />
+          </button>
+        )}
+
+        {/* New Session Button */}
+        {onNewSession && (
+          <button
+            onClick={onNewSession}
+            className="text-cyan-500 hover:text-cyan-400 transition-colors p-1.5 rounded hover:bg-cyan-900/30 border border-transparent hover:border-cyan-800/50"
+            title="New Session (Clear all messages)"
+          >
+            <FilePlus size={16} />
           </button>
         )}
 

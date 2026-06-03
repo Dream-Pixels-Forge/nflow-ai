@@ -3,7 +3,7 @@ import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile }
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
 import { memoryManager, agentOrchestrator, contextManager, taskManager, collaborationManager } from '../src/agentic';
-import { loadMessages, saveMessage, loadSettings, saveSettings } from '../src/persistence';
+import { loadMessages, saveMessage, saveMessages, clearMessages, loadSettings, saveSettings } from '../src/persistence';
 
 interface UseAgentChatProps {
   activeAgent: AgentMode;
@@ -27,6 +27,7 @@ interface UseAgentChatReturn {
   undoDelete: () => void;
   showUndoToast: boolean;
   rerunMessage: (messageId: string) => void;
+  clearAllMessages: () => void;
 }
 
 // Helper to infer agent from task title
@@ -510,6 +511,26 @@ ${taskList || 'No tasks defined'}`;
     }
   }, [activeAgent, agentHistories, setInput, handleSendMessage]);
 
+  // Clear all messages (new session)
+  const clearAllMessages = useCallback(() => {
+    const initialHistories = {} as Record<AgentMode, Message[]>;
+    Object.values(AgentMode).forEach(mode => {
+      initialHistories[mode] = mode === AgentMode.CHAT ? [{
+        id: 'init',
+        role: 'system',
+        content: 'NEXUSFLOW CORE ONLINE. PROJECT FOLDER INITIALIZED.',
+        timestamp: Date.now(),
+        agent: AgentMode.CHAT
+      }] : [];
+    });
+    setAgentHistories(initialHistories);
+    
+    // Clear from IndexedDB
+    Object.values(AgentMode).forEach(mode => {
+      clearMessages(mode).catch(console.error);
+    });
+  }, []);
+
   return {
     input,
     setInput,
@@ -521,6 +542,7 @@ ${taskList || 'No tasks defined'}`;
     deleteMessage,
     undoDelete,
     showUndoToast,
-    rerunMessage
+    rerunMessage,
+    clearAllMessages
   };
 };

@@ -152,7 +152,8 @@ export default function App() {
     deleteMessage,
     undoDelete,
     showUndoToast,
-    rerunMessage
+    rerunMessage,
+    clearAllMessages
   } = useAgentChat({
     activeAgent,
     toolState,
@@ -382,6 +383,11 @@ export default function App() {
             onEmergencyStop={() => {
               // Emergency halt all agents
               agenticActions.haltAll();
+            }}
+            onNewSession={() => {
+              if (window.confirm('Start a new session? This will clear all messages.')) {
+                clearAllMessages();
+              }
             }}
           />
 
