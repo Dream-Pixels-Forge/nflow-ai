@@ -32,7 +32,7 @@ export const sendMessageToAgentStream = async function* (
   switch (settings.aiProvider) {
     case 'gemini':
       yield* sendMessageToGeminiStream(
-        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, settings.geminiApiKey || ''
+        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, settings.geminiApiKey || '', settings.chatMode
       );
       break;
 
@@ -41,7 +41,7 @@ export const sendMessageToAgentStream = async function* (
       const targetModel = isTechnical ? settings.ollamaCodingModel : settings.ollamaGeneralModel;
       yield* sendMessageToOllamaStream(
         prompt, history, agent, tools, projectSummary, currentTasks,
-        settings.suggestionLevel, settings.ollamaUrl, targetModel || settings.ollamaGeneralModel
+        settings.suggestionLevel, settings.ollamaUrl, targetModel || settings.ollamaGeneralModel, settings.chatMode
       );
       break;
     }
@@ -54,7 +54,7 @@ export const sendMessageToAgentStream = async function* (
       };
       yield* sendMessageToOpenRouterStream(
         prompt, history, agent, tools, projectSummary, currentTasks,
-        settings.suggestionLevel, config
+        settings.suggestionLevel, config, settings.chatMode
       );
       break;
     }

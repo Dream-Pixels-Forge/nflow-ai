@@ -194,8 +194,8 @@ export const MessageList: React.FC<MessageListProps> = ({
              </div>
          );
       })}
-      {/* Thinking Indicator - Shows immediately when processing */}
-      {isProcessing && (
+      {/* Thinking Indicator - Shows immediately when processing, hides when streaming */}
+      {isProcessing && !messages.some(m => m.isStreaming) && (
         <div className="flex gap-3 items-start animate-fade-in">
           <div className={`w-8 h-8 rounded bg-nexus-800 border border-nexus-border flex items-center justify-center ${AGENTS[activeAgent].color}`}>
             <Loader2 size={16} className="animate-spin" />

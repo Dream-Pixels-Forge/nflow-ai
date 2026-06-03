@@ -1,5 +1,5 @@
 
-import { AgentMode, Message, ToolState, Task, SuggestionLevel } from "../types";
+import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
 import { getSystemInstruction } from "./promptUtils";
 
 export interface NVIDIAConfig {
@@ -57,7 +57,8 @@ export const sendMessageToNVIDIA = async (
   projectSummary: string = "",
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
-  config: NVIDIAConfig = DEFAULT_NVIDIA_CONFIG
+  config: NVIDIAConfig = DEFAULT_NVIDIA_CONFIG,
+  chatMode: ChatMode = 'agent'
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
@@ -79,7 +80,7 @@ export const sendMessageToNVIDIA = async (
     // Build messages array
     const systemMsg: NVIDIAMessage = {
       role: 'system',
-      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
     };
 
     const recentHistory: NVIDIAMessage[] = history

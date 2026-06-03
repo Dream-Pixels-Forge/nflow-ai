@@ -10,6 +10,8 @@ export enum AgentMode {
   MONITOR = 'MONITOR'
 }
 
+export type ChatMode = 'chat' | 'agent';
+
 export interface AgentConfig {
   id: AgentMode;
   name: string;
@@ -70,6 +72,7 @@ export interface AppSettings {
   soundEnabled: boolean;
   autoScroll: boolean;
   animations: boolean;
+  chatMode: ChatMode;
   // Backend Settings
   aiProvider: AIProvider;
   // Gemini Settings

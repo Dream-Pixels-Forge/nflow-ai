@@ -54,6 +54,7 @@ export default function App() {
     soundEnabled: true,
     autoScroll: true,
     animations: true,
+    chatMode: 'agent',
     aiProvider: 'gemini',
     ollamaUrl: 'http://localhost:11434',
     ollamaGeneralModel: 'llama3',
@@ -376,6 +377,7 @@ export default function App() {
             onKeyDown={handleKeyDown}
             onSendMessage={handleSendMessage}
             settings={settings}
+            onChatModeChange={(mode) => setSettings(prev => ({ ...prev, chatMode: mode }))}
             onFilesAttached={(files) => {
               // Add attached files to RAG context (one FileReader per file)
               files.forEach(file => {

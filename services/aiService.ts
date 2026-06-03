@@ -40,7 +40,8 @@ export const sendMessageToAgent = async (
         currentTasks,
         settings.suggestionLevel,
         settings.ollamaUrl,
-        targetModel || settings.ollamaGeneralModel
+        targetModel || settings.ollamaGeneralModel,
+        settings.chatMode
       );
     }
 
@@ -57,7 +58,8 @@ export const sendMessageToAgent = async (
           apiKey: settings.openrouterApiKey || '',
           model: settings.openrouterModel || DEFAULT_OPENROUTER_CONFIG.model,
           baseUrl: DEFAULT_OPENROUTER_CONFIG.baseUrl
-        }
+        },
+        settings.chatMode
       );
     }
 
@@ -74,7 +76,8 @@ export const sendMessageToAgent = async (
           apiKey: settings.nvidiaApiKey || '',
           model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
           baseUrl: settings.nvidiaBaseUrl || DEFAULT_NVIDIA_CONFIG.baseUrl
-        }
+        },
+        settings.chatMode
       );
     }
 
@@ -88,7 +91,9 @@ export const sendMessageToAgent = async (
         tools,
         projectSummary,
         currentTasks,
-        settings.suggestionLevel
+        settings.suggestionLevel,
+        settings.geminiApiKey || '',
+        settings.chatMode
       );
     }
   }

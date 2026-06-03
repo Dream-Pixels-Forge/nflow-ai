@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Tool } from "@google/genai";
-import { AgentMode, Message, ToolState, Task, SuggestionLevel } from "../types";
+import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
 import { getSystemInstruction } from "./promptUtils";
 
 export const sendMessageToGemini = async (
@@ -11,7 +11,8 @@ export const sendMessageToGemini = async (
   projectSummary: string = "",
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
-  apiKey: string = ''
+  apiKey: string = '',
+  chatMode: ChatMode = 'agent'
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   if (!apiKey) {
     throw new Error("API Key not found. Set your Gemini API key in Settings, or switch to Ollama.");
@@ -64,7 +65,7 @@ export const sendMessageToGemini = async (
     const chat = ai.chats.create({
       model: 'gemini-2.5-flash',
       config: {
-        systemInstruction: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel),
+        systemInstruction: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode),
         temperature: 0.7,
         tools: apiTools.length > 0 ? apiTools : undefined
       },

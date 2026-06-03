@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { AgentMode, Message, ToolState, Task, SuggestionLevel } from "../types";
+import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
 import { getSystemInstruction } from "./promptUtils";
 
 export interface StreamChunk {
@@ -23,7 +23,8 @@ export const sendMessageToGeminiStream = async function* (
   projectSummary: string = "",
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
-  apiKey: string = ''
+  apiKey: string = '',
+  chatMode: ChatMode = 'agent'
 ): AsyncGenerator<StreamChunk> {
   if (!apiKey) {
     throw new Error("API Key not found. Set your Gemini API key in Settings, or switch to Ollama.");
@@ -62,7 +63,7 @@ export const sendMessageToGeminiStream = async function* (
       parts: [{ text: msg.content }]
     }));
 
-  const systemInstruction = getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel) + contextInjection;
+  const systemInstruction = getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode) + contextInjection;
 
   try {
     const response = await ai.models.generateContentStream({

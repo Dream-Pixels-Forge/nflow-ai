@@ -1,5 +1,5 @@
 
-import { AgentMode, Message, ToolState, Task, SuggestionLevel } from "../types";
+import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
 import { getSystemInstruction } from "./promptUtils";
 
 export interface OllamaResponse {
@@ -56,7 +56,8 @@ export const sendMessageToOllama = async (
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
   baseUrl: string = 'http://localhost:11434',
-  model: string = 'llama3'
+  model: string = 'llama3',
+  chatMode: ChatMode = 'agent'
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
@@ -78,7 +79,7 @@ export const sendMessageToOllama = async (
     // Build messages array for Ollama
     const systemMsg = {
       role: 'system',
-      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
     };
 
     const recentHistory = history
@@ -170,6 +171,7 @@ export async function* sendMessageToOllamaStream(
   suggestionLevel: SuggestionLevel = 'medium',
   baseUrl: string = 'http://localhost:11434',
   model: string = 'llama3',
+  chatMode: ChatMode = 'agent'
 ): AsyncGenerator<OllamaStreamChunk> {
   let contextInjection = "";
   if (tools.rag.active && tools.rag.content.length > 0) {
@@ -181,7 +183,7 @@ export async function* sendMessageToOllamaStream(
 
   const systemMsg = {
     role: 'system',
-    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
   };
 
   const recentHistory = history

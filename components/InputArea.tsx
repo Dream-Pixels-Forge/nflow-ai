@@ -16,7 +16,7 @@ import {
   Command,
   ChevronUp
 } from 'lucide-react';
-import { AGENTS, AgentMode, AppSettings, AIProvider, PROVIDER_NAMES } from '../types';
+import { AGENTS, AgentMode, AppSettings, AIProvider, ChatMode, PROVIDER_NAMES } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
 import { getOllamaModels } from '../services/ollamaService';
 
@@ -48,6 +48,7 @@ interface InputAreaProps {
   onSendMessage: () => void;
   onFilesAttached?: (files: File[]) => void;
   settings?: AppSettings;
+  onChatModeChange?: (mode: ChatMode) => void;
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
@@ -59,7 +60,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   onKeyDown,
   onSendMessage,
   onFilesAttached,
-  settings
+  settings,
+  onChatModeChange
 }) => {
   // Agentic systems
   const [agenticState, agenticActions] = useAgenticSystems();
@@ -573,6 +575,22 @@ export const InputArea: React.FC<InputAreaProps> = ({
             >
               <StopCircle size={18} />
             </button>
+
+            {/* Chat/Agent Mode Toggle */}
+            {settings && onChatModeChange && (
+              <button
+                onClick={() => onChatModeChange(settings.chatMode === 'chat' ? 'agent' : 'chat')}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-mono transition-colors ${
+                  settings.chatMode === 'agent'
+                    ? 'bg-nexus-accent/20 border border-nexus-accent/50 text-nexus-accent'
+                    : 'bg-zinc-800 border border-zinc-700 text-gray-400 hover:border-zinc-600'
+                }`}
+                title={settings.chatMode === 'agent' ? 'Agent Mode: Orchestrator routes to specialists' : 'Chat Mode: Direct responses'}
+              >
+                {settings.chatMode === 'agent' ? '🤖' : '💬'}
+                <span>{settings.chatMode === 'agent' ? 'AGENT' : 'CHAT'}</span>
+              </button>
+            )}
 
             {/* Provider Drop-up */}
             {settings && (

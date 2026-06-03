@@ -1,5 +1,5 @@
 
-import { AgentMode, Message, ToolState, Task, SuggestionLevel } from "../types";
+import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
 import { getSystemInstruction } from "./promptUtils";
 
 export interface OpenRouterConfig {
@@ -57,7 +57,8 @@ export const sendMessageToOpenRouter = async (
   projectSummary: string = "",
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
-  config: OpenRouterConfig = DEFAULT_OPENROUTER_CONFIG
+  config: OpenRouterConfig = DEFAULT_OPENROUTER_CONFIG,
+  chatMode: ChatMode = 'agent'
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
@@ -79,7 +80,7 @@ export const sendMessageToOpenRouter = async (
     // Build messages array
     const systemMsg: OpenRouterMessage = {
       role: 'system',
-      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+      content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
     };
 
     const recentHistory: OpenRouterMessage[] = history
@@ -204,6 +205,7 @@ export async function* sendMessageToOpenRouterStream(
   currentTasks: Task[] = [],
   suggestionLevel: SuggestionLevel = 'medium',
   config: OpenRouterConfig = DEFAULT_OPENROUTER_CONFIG,
+  chatMode: ChatMode = 'agent'
 ): AsyncGenerator<OpenRouterStreamChunk> {
   let contextInjection = "";
   if (tools.rag.active && tools.rag.content.length > 0) {
@@ -215,7 +217,7 @@ export async function* sendMessageToOpenRouterStream(
 
   const systemMsg: OpenRouterMessage = {
     role: 'system',
-    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel)
+    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
   };
 
   const recentHistory: OpenRouterMessage[] = history
