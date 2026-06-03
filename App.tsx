@@ -433,6 +433,7 @@ export default function App() {
           onUpdateSettings={setSettings}
           isOpen={showRightPanel}
           onToggle={() => setShowRightPanel(false)}
+          messages={currentMessages}
         />
 
         {/* Undo Delete Toast */}

@@ -19,7 +19,7 @@ import {
   AlertTriangle,
   Brain
 } from 'lucide-react';
-import { ToolState } from '../types';
+import { ToolState, Message } from '../types';
 import { useMCP } from '../hooks/useMCP';
 import { useA2A } from '../hooks/useA2A';
 import { useMemory } from '../hooks/useMemory';
@@ -27,9 +27,10 @@ import { useMemory } from '../hooks/useMemory';
 interface ToolsPanelProps {
   toolState: ToolState;
   setToolState: React.Dispatch<React.SetStateAction<ToolState>>;
+  messages?: Message[];
 }
 
-export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState }) => {
+export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState, messages }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -361,12 +362,12 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ toolState, setToolState 
         <div className="p-2 rounded border border-nexus-dim/20 bg-nexus-900/50">
           <div className="flex justify-between text-[10px] font-mono text-nexus-dim mb-1">
               <span>CONTEXT WINDOW</span>
-              <span>{Math.min(100, (toolState.rag.content.length * 5) + 1)}%</span>
+              <span>{Math.min(100, Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 320))}% ({Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 1000)}K chars)</span>
           </div>
           <div className="h-1 bg-nexus-900 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-nexus-accent transition-all duration-500" 
-                style={{ width: `${Math.min(100, (toolState.rag.content.length * 5) + 1)}%` }}
+                style={{ width: `${Math.min(100, Math.round(((messages || []).reduce((sum, m) => sum + m.content.length, 0) + toolState.rag.content.reduce((sum, c) => sum + c.length, 0)) / 320))}%` }}
               ></div>
           </div>
         </div>

@@ -312,6 +312,29 @@ ${taskList || 'No tasks defined'}`;
             extractFilesFromContent(streamedContent);
           }
 
+          // COORDINATOR ENFORCEMENT: CHAT agent should not generate code
+          if (activeAgent === AgentMode.CHAT) {
+            const codeBlockRegex = /```[\s\S]*?```/g;
+            const fileTagRegex = /FILE:\s*\S+/g;
+            const hasCode = codeBlockRegex.test(streamedContent) || fileTagRegex.test(streamedContent);
+            
+            if (hasCode) {
+              // Add a warning message
+              const warningMsg: Message = {
+                id: (Date.now() + 3).toString(),
+                role: 'system',
+                content: '⚠️ The CHAT agent detected code in its response. Code generation should be handled by the CODER agent. Consider switching to CODER for implementation tasks.',
+                timestamp: Date.now(),
+                agent: activeAgent,
+                isError: false
+              };
+              setAgentHistories(prev => ({
+                ...prev,
+                [activeAgent]: [...prev[activeAgent], warningMsg]
+              }));
+            }
+          }
+
           // Handle Orchestrator Suggestion
           if (chunk.suggestedAgent && chunk.suggestedAgent !== activeAgent) {
             setPendingSwitch(chunk.suggestedAgent);

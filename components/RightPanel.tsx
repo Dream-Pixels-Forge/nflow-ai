@@ -1,5 +1,5 @@
 import React from 'react';
-import { ToolState, AppSettings } from '../types';
+import { ToolState, AppSettings, Message } from '../types';
 import { SystemMonitor } from './SystemMonitor';
 import { ToolsPanel } from './ToolsPanel';
 import { GitHubPanel } from './GitHubPanel';
@@ -14,6 +14,7 @@ interface RightPanelProps {
   onUpdateSettings: (newSettings: AppSettings) => void;
   isOpen: boolean;
   onToggle: () => void;
+  messages?: Message[];
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -24,7 +25,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onSetToolState,
   onUpdateSettings,
   isOpen,
-  onToggle
+  onToggle,
+  messages
 }) => {
   if (!isOpen) return null;
 
@@ -77,7 +79,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar relative">
         {rightPanelTab === 'telemetry' && <SystemMonitor />}
-        {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} />}
+        {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} messages={messages} />}
         {rightPanelTab === 'github' && <GitHubPanel settings={settings} onUpdate={onUpdateSettings} />}
       </div>
     </div>
