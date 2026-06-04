@@ -106,9 +106,9 @@ export interface AdvancedSecurityActions {
   addModelArmorRule: (rule: Omit<ModelArmorFilterRule, 'id' | 'createdAt' | 'updatedAt'>) => ModelArmorFilterRule;
   
   // Secret Manager
-  createSecret: (name: string, type: SecretType, value: string, options?: any) => Secret;
-  getSecretValue: (secretId: string, accessedBy: string) => string | null;
-  rotateSecret: (secretId: string, newValue: string, rotatedBy: string) => Secret | null;
+  createSecret: (name: string, type: SecretType, value: string, options?: any) => Promise<Secret>;
+  getSecretValue: (secretId: string, accessedBy: string) => Promise<string | null>;
+  rotateSecret: (secretId: string, newValue: string, rotatedBy: string) => Promise<Secret | null>;
   revokeSecret: (secretId: string, revokedBy: string) => boolean;
   
   // Circuit Breaker

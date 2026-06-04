@@ -1,9 +1,18 @@
 /**
  * Security: Secret Manager
  * 
- * Implements secure API key storage with rotation and audit logging.
+ * Implements secure API key storage with AES-256-GCM encryption, rotation and audit logging.
  * Based on Google ADK Security Deep Dive from Obsidian vault.
  */
+
+import {
+  generateAESKey,
+  encryptAES,
+  decryptAES,
+  storeKeyInDB,
+  loadKeyFromDB,
+  checkWebCryptoSupport,
+} from './CryptoProvider';
 
 export type SecretType = 'api-key' | 'token' | 'password' | 'certificate' | 'custom';
 export type SecretStatus = 'active' | 'rotating' | 'expired' | 'revoked';
@@ -66,15 +75,55 @@ const DEFAULT_CONFIG: SecretManagerConfig = {
 export class SecretManager {
   private secrets: Map<string, Secret> = new Map();
   private config: SecretManagerConfig;
+  private encryptionKey: CryptoKey | null = null;
+  private encryptionReady = false;
 
   constructor(config: Partial<SecretManagerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
   /**
+   * Initialize encryption - load or generate AES-256-GCM key
+   */
+  async initEncryption(): Promise<void> {
+    if (!checkWebCryptoSupport()) {
+      console.warn('[SecretManager] Web Crypto unavailable, using base64 fallback');
+      this.encryptionReady = false;
+      return;
+    }
+
+    try {
+      // Try to load existing key
+      const existingKey = await loadKeyFromDB('nflow-master-key');
+      if (existingKey) {
+        this.encryptionKey = existingKey;
+        this.encryptionReady = true;
+        return;
+      }
+    } catch { /* key doesn't exist */ }
+
+    // Generate new key
+    try {
+      this.encryptionKey = await generateAESKey();
+      await storeKeyInDB('nflow-master-key', this.encryptionKey);
+      this.encryptionReady = true;
+    } catch (e) {
+      console.error('[SecretManager] Failed to generate encryption key:', e);
+      this.encryptionReady = false;
+    }
+  }
+
+  /**
+   * Check if encryption is ready
+   */
+  isEncryptionReady(): boolean {
+    return this.encryptionReady && this.encryptionKey !== null;
+  }
+
+  /**
    * Create a new secret
    */
-  createSecret(
+  async createSecret(
     name: string,
     type: SecretType,
     value: string,
@@ -85,18 +134,22 @@ export class SecretManager {
       rotationIntervalMs?: number;
       createdBy?: string;
     }
-  ): Secret {
+  ): Promise<Secret> {
     // Check if secret already exists
     if (Array.from(this.secrets.values()).some(s => s.name === name)) {
       throw new Error(`Secret with name '${name}' already exists`);
     }
+
+    const encryptedValue = this.config.encryptionEnabled
+      ? await this.encrypt(value)
+      : value;
 
     const secret: Secret = {
       id: `secret-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
       type,
       status: 'active',
-      value: this.config.encryptionEnabled ? this.encrypt(value) : value,
+      value: encryptedValue,
       description: options?.description,
       tags: options?.tags || [],
       createdAt: new Date().toISOString(),
@@ -118,7 +171,7 @@ export class SecretManager {
   /**
    * Get a secret value
    */
-  getSecret(secretId: string, accessedBy: string): string | null {
+  async getSecret(secretId: string, accessedBy: string): Promise<string | null> {
     const secret = this.secrets.get(secretId);
     if (!secret) return null;
 
@@ -136,7 +189,9 @@ export class SecretManager {
     // Log access
     this.logAccess(secretId, accessedBy, 'read');
 
-    return this.config.encryptionEnabled ? this.decrypt(secret.value) : secret.value;
+    return this.config.encryptionEnabled
+      ? await this.decrypt(secret.value)
+      : secret.value;
   }
 
   /**
@@ -157,12 +212,14 @@ export class SecretManager {
   /**
    * Rotate a secret
    */
-  rotateSecret(secretId: string, newValue: string, rotatedBy: string): Secret | null {
+  async rotateSecret(secretId: string, newValue: string, rotatedBy: string): Promise<Secret | null> {
     const secret = this.secrets.get(secretId);
     if (!secret) return null;
 
     secret.status = 'rotating';
-    secret.value = this.config.encryptionEnabled ? this.encrypt(newValue) : newValue;
+    secret.value = this.config.encryptionEnabled
+      ? await this.encrypt(newValue)
+      : newValue;
     secret.status = 'active';
     secret.lastRotatedAt = new Date().toISOString();
     secret.updatedAt = new Date().toISOString();
@@ -278,22 +335,52 @@ export class SecretManager {
   }
 
   /**
-   * Encrypt secret value (placeholder - use proper encryption in production)
+   * Encrypt secret value using AES-256-GCM
    */
-  private encrypt(value: string): string {
-    // In production, use AES-256 or similar
-    return `encrypted:${Buffer.from(value).toString('base64')}`;
+  private async encrypt(value: string): Promise<string> {
+    if (!this.encryptionKey || !this.encryptionReady) {
+      // Fallback to base64 if encryption not initialized
+      return `plain:${btoa(value)}`;
+    }
+
+    try {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await encryptAES(this.encryptionKey, iv, value);
+      const ivBase64 = btoa(String.fromCharCode(...iv));
+      const ctBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+      return `aes:${ivBase64}:${ctBase64}`;
+    } catch (e) {
+      console.error('[SecretManager] Encryption failed, using fallback:', e);
+      return `plain:${btoa(value)}`;
+    }
   }
 
   /**
-   * Decrypt secret value (placeholder - use proper decryption in production)
+   * Decrypt secret value using AES-256-GCM
    */
-  private decrypt(encryptedValue: string): string {
-    // In production, use proper decryption
-    if (encryptedValue.startsWith('encrypted:')) {
-      return Buffer.from(encryptedValue.slice(10), 'base64').toString();
+  private async decrypt(encryptedValue: string): Promise<string> {
+    if (encryptedValue.startsWith('plain:')) {
+      return atob(encryptedValue.slice(6));
     }
-    return encryptedValue;
+
+    // Legacy base64 format
+    if (encryptedValue.startsWith('encrypted:')) {
+      return atob(encryptedValue.slice(10));
+    }
+
+    if (!this.encryptionKey || !this.encryptionReady || !encryptedValue.startsWith('aes:')) {
+      return encryptedValue;
+    }
+
+    try {
+      const parts = encryptedValue.slice(4).split(':');
+      const iv = Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0));
+      const ciphertext = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0)).buffer;
+      return await decryptAES(this.encryptionKey, iv, ciphertext);
+    } catch (e) {
+      console.error('[SecretManager] Decryption failed:', e);
+      return encryptedValue;
+    }
   }
 
   /**

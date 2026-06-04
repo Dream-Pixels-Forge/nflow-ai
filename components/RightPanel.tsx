@@ -5,14 +5,18 @@ import { ToolsPanel } from './ToolsPanel';
 import { GitHubPanel } from './GitHubPanel';
 import { AgentWorkflow } from './AgentWorkflow';
 import { GraphWorkflowPanel } from './GraphWorkflowPanel';
+import { EvaluationPanel } from './EvaluationPanel';
+import { RAGPanel } from './RAGPanel';
 import { AdaptivePanel } from './AdaptivePanel';
-import { Activity, Wrench, Github, GitBranch, Layers, PanelRightClose, Network } from 'lucide-react';
+import { Activity, Wrench, Github, GitBranch, Layers, PanelRightClose, Network, TestTube, Database } from 'lucide-react';
+
+type TabType = 'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'eval' | 'rag' | 'adaptive';
 
 interface RightPanelProps {
-  rightPanelTab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'adaptive';
+  rightPanelTab: TabType;
   toolState: ToolState;
   settings: AppSettings;
-  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'adaptive') => void;
+  onSetRightPanelTab: (tab: TabType) => void;
   onSetToolState: React.Dispatch<React.SetStateAction<ToolState>>;
   onUpdateSettings: (newSettings: AppSettings) => void;
   isOpen: boolean;
@@ -41,7 +45,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   // Determine which content to show
   const isMainTab = ['telemetry', 'tools', 'github'].includes(rightPanelTab);
-  const isSecondaryTab = ['workflow', 'adaptive'].includes(rightPanelTab);
+  const isSecondaryTab = ['workflow', 'graph', 'eval', 'rag', 'adaptive'].includes(rightPanelTab);
 
   return (
     <div className="w-80 bg-nexus-900 border-l border-nexus-border flex flex-col z-10 shadow-xl">
@@ -124,6 +128,28 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <Layers size={10} />
           Adaptive
         </button>
+        <button
+          onClick={() => onSetRightPanelTab('eval')}
+          className={`flex-1 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+            rightPanelTab === 'eval'
+              ? 'text-cyan-400 border-b border-cyan-400'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <TestTube size={10} />
+          Eval
+        </button>
+        <button
+          onClick={() => onSetRightPanelTab('rag')}
+          className={`flex-1 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+            rightPanelTab === 'rag'
+              ? 'text-cyan-400 border-b border-cyan-400'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <Database size={10} />
+          RAG
+        </button>
       </div>
 
       {/* Content */}
@@ -145,6 +171,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onAction={onAdaptiveAction}
           />
         )}
+        {rightPanelTab === 'eval' && <EvaluationPanel />}
+        {rightPanelTab === 'rag' && <RAGPanel />}
       </div>
     </div>
   );
