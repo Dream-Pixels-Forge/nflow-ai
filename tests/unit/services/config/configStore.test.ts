@@ -2,6 +2,8 @@
 // Since the configStore tests are more complex and involve React context,
 // functional testing is better done in integration tests
 
+import { describe, it, expect } from 'vitest';
+
 // We'll use this file to add more specific unit tests for the config store
 // as needed, but most functionality is tested in the integration tests
 describe('Config Store Additional Unit Tests', () => {

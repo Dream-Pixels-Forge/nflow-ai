@@ -27,7 +27,7 @@ describe('ProjectManager - Merge to Main', () => {
     const buttons = screen.getAllByRole('button');
     const mergeButton = buttons.find(btn => btn.textContent?.includes('MERGE TO MAIN'));
     expect(mergeButton).toBeTruthy();
-    expect(mergeButton!.disabled).toBe(false);
+    expect((mergeButton as HTMLButtonElement).disabled).toBe(false);
     
     fireEvent.click(mergeButton!);
     expect(onMerge).toHaveBeenCalledTimes(1);
@@ -50,7 +50,7 @@ describe('ProjectManager - Merge to Main', () => {
     const buttons = screen.getAllByRole('button');
     const blockedButton = buttons.find(btn => btn.textContent?.includes('MERGE BLOCKED'));
     expect(blockedButton).toBeTruthy();
-    expect(blockedButton!.disabled).toBe(true);
+    expect((blockedButton as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('should show MERGE BLOCKED when there are pending security tasks', () => {
@@ -70,6 +70,6 @@ describe('ProjectManager - Merge to Main', () => {
     const buttons = screen.getAllByRole('button');
     const blockedButton = buttons.find(btn => btn.textContent?.includes('MERGE BLOCKED'));
     expect(blockedButton).toBeTruthy();
-    expect(blockedButton!.disabled).toBe(true);
+    expect((blockedButton as HTMLButtonElement).disabled).toBe(true);
   });
 });

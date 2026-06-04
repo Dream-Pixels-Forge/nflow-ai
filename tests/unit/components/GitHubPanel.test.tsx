@@ -13,6 +13,7 @@ describe('GitHubPanel', () => {
     soundEnabled: true,
     autoScroll: true,
     animations: true,
+    chatMode: 'agent',
     aiProvider: 'gemini',
     ollamaUrl: 'http://localhost:11434',
     ollamaGeneralModel: 'llama2',

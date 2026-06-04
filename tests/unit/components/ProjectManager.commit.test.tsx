@@ -31,7 +31,7 @@ describe('ProjectManager - Commit', () => {
     // The commit button is the one that contains "Commit" text and is not disabled
     const buttons = screen.getAllByRole('button');
     const commitButton = buttons.find(btn => 
-      btn.textContent?.includes('Commit') && !btn.disabled
+      btn.textContent?.includes('Commit') && !(btn as HTMLButtonElement).disabled
     );
     expect(commitButton).toBeTruthy();
     fireEvent.click(commitButton!);
@@ -45,7 +45,7 @@ describe('ProjectManager - Commit', () => {
     
     const buttons = screen.getAllByRole('button');
     const commitButton = buttons.find(btn => 
-      btn.textContent?.includes('Commit') && !btn.disabled
+      btn.textContent?.includes('Commit') && !(btn as HTMLButtonElement).disabled
     );
     // Button should be disabled when no commit message
     expect(commitButton).toBeFalsy();

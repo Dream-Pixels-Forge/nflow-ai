@@ -40,7 +40,7 @@ describe('useAgentChat - Tool Results Feedback', () => {
         { name: 'read_file', success: false, error: 'File not found' },
       ];
 
-      const feedbackContent = `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? r.output.slice(0, MAX_RESULT_LENGTH) : r.error}`).join("\n")}\n\nPlease continue with your task.`;
+      const feedbackContent = `Tool execution results:\n${toolResults.map(r => `[${r.success ? "OK" : "FAIL"}] ${r.name}: ${r.success ? (r.output ?? '').slice(0, MAX_RESULT_LENGTH) : r.error}`).join("\n")}\n\nPlease continue with your task.`;
 
       expect(feedbackContent).toContain('[OK] write_file: File created');
       expect(feedbackContent).toContain('[FAIL] read_file: File not found');
