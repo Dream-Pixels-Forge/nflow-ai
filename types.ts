@@ -93,6 +93,8 @@ export interface AppSettings {
   githubToken?: string;
   githubOwner?: string;
   githubRepo?: string;
+  // Whisper STT Settings
+  whisperModel?: 'tiny' | 'base';
 }
 
 // New Tool Interfaces

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AGENTS, AgentMode, AppSettings, AIProvider, ChatMode, PROVIDER_NAMES } from '../types';
 import { useAgenticSystems } from '../hooks/useAgenticSystems';
+import { useWhisperSTT } from '../src/hooks/useWhisperSTT';
 import { getOllamaModels } from '../services/ollamaService';
 
 const SLASH_COMMANDS = [
@@ -70,12 +71,22 @@ export const InputArea: React.FC<InputAreaProps> = ({
   // Agentic systems
   const [agenticState, agenticActions] = useAgenticSystems();
   const { isHalted, contextStatus, currentSession } = agenticState;
+
+  // Whisper STT hook
+  const {
+    isSupported: isWhisperSupported,
+    isModelLoading,
+    modelLoadProgress,
+    isRecording: isWhisperRecording,
+    transcribedText,
+    error: whisperError,
+    startRecording: startWhisperRecording,
+    stopRecording: stopWhisperRecording
+  } = useWhisperSTT();
   
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false);
   const [emergencyReason, setEmergencyReason] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [filteredCommands, setFilteredCommands] = useState(SLASH_COMMANDS);
   
@@ -87,8 +98,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const providerDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -103,18 +112,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
   // Auto-focus on mount
   useEffect(() => {
     textareaRef.current?.focus();
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
   }, []);
 
   // Fetch Ollama models when provider is ollama
@@ -241,78 +238,16 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Microphone/Speech-to-text handlers
   const toggleRecording = async () => {
-    if (isRecording) {
-      stopRecording();
+    if (isWhisperRecording) {
+      // Stop recording and get transcribed text
+      const text = await stopWhisperRecording();
+      if (text) {
+        setInput(input + (input ? ' ' : '') + text);
+      }
     } else {
-      startRecording();
+      // Start recording (will load model if needed)
+      await startWhisperRecording();
     }
-  };
-
-  // Check for Web Speech API support
-  const SpeechRecognitionAPI = typeof window !== 'undefined'
-    ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
-    : null;
-  const isSpeechRecognitionSupported = !!SpeechRecognitionAPI;
-
-  const startRecording = async () => {
-    if (!SpeechRecognitionAPI) {
-      // Speech recognition not available — do nothing (button should be disabled)
-      return;
-    }
-
-    // Use Web Speech API for speech-to-text
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    let finalTranscript = input;
-
-    recognition.onresult = (event: any) => {
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
-          setInput(finalTranscript.trim());
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
-    setRecordingTime(0);
-
-    recordingIntervalRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
-    }, 1000);
-  };
-
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-    }
-    setIsRecording(false);
-    setRecordingTime(0);
   };
 
   const formatRecordingTime = (seconds: number) => {
@@ -520,26 +455,34 @@ export const InputArea: React.FC<InputAreaProps> = ({
             {/* Microphone Button */}
             <button
               onClick={toggleRecording}
-              disabled={!isSpeechRecognitionSupported}
+              disabled={!isWhisperSupported}
               className={`p-2 rounded-sm transition-colors ${
-                isRecording 
+                isWhisperRecording 
                   ? 'bg-red-600 text-white animate-pulse' 
-                  : isSpeechRecognitionSupported
+                  : isWhisperSupported
                     ? 'text-gray-500 hover:text-gray-300 hover:bg-zinc-800'
                     : 'text-gray-600 cursor-not-allowed opacity-50'
               }`}
-              title={isSpeechRecognitionSupported
-                ? (isRecording ? 'Stop recording' : 'Voice input')
-                : 'Voice input requires Chrome or Edge browser'}
+              title={isWhisperSupported
+                ? (isWhisperRecording ? 'Stop recording' : 'Voice input')
+                : 'Voice input requires MediaRecorder support'}
             >
-              {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+              {isWhisperRecording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
             
             {/* Recording Indicator */}
-            {isRecording && (
+            {isWhisperRecording && (
               <div className="flex items-center gap-2 text-red-400 text-xs font-mono">
                 <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span>{formatRecordingTime(recordingTime)}</span>
+                <span>Recording</span>
+              </div>
+            )}
+
+            {/* Model Loading Indicator */}
+            {isModelLoading && (
+              <div className="flex items-center gap-2 text-yellow-400 text-xs font-mono">
+                <Loader2 size={12} className="animate-spin" />
+                <span>Loading Whisper model... {Math.round(modelLoadProgress)}%</span>
               </div>
             )}
             
