@@ -4,14 +4,15 @@ import { SystemMonitor } from './SystemMonitor';
 import { ToolsPanel } from './ToolsPanel';
 import { GitHubPanel } from './GitHubPanel';
 import { AgentWorkflow } from './AgentWorkflow';
+import { GraphWorkflowPanel } from './GraphWorkflowPanel';
 import { AdaptivePanel } from './AdaptivePanel';
-import { Activity, Wrench, Github, GitBranch, Layers, PanelRightClose } from 'lucide-react';
+import { Activity, Wrench, Github, GitBranch, Layers, PanelRightClose, Network } from 'lucide-react';
 
 interface RightPanelProps {
-  rightPanelTab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'adaptive';
+  rightPanelTab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'adaptive';
   toolState: ToolState;
   settings: AppSettings;
-  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'adaptive') => void;
+  onSetRightPanelTab: (tab: 'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'adaptive') => void;
   onSetToolState: React.Dispatch<React.SetStateAction<ToolState>>;
   onUpdateSettings: (newSettings: AppSettings) => void;
   isOpen: boolean;
@@ -88,7 +89,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </button>
       </div>
 
-      {/* Secondary Tabs Row - Flow & Adaptive */}
+      {/* Secondary Tabs Row - Flow, Graph & Adaptive */}
       <div className="flex border-b border-nexus-border bg-nexus-800/30">
         <button
           onClick={() => onSetRightPanelTab('workflow')}
@@ -100,6 +101,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         >
           <GitBranch size={10} />
           Flow
+        </button>
+        <button
+          onClick={() => onSetRightPanelTab('graph')}
+          className={`flex-1 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+            rightPanelTab === 'graph'
+              ? 'text-cyan-400 border-b border-cyan-400'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <Network size={10} />
+          Graph
         </button>
         <button
           onClick={() => onSetRightPanelTab('adaptive')}
@@ -120,6 +132,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {rightPanelTab === 'tools' && <ToolsPanel toolState={toolState} setToolState={onSetToolState} messages={messages} />}
         {rightPanelTab === 'github' && <GitHubPanel settings={settings} onUpdate={onUpdateSettings} />}
         {rightPanelTab === 'workflow' && <AgentWorkflow activeAgent={activeAgent || 'CHAT' as AgentMode} />}
+        {rightPanelTab === 'graph' && (
+          <GraphWorkflowPanel
+            activeAgent={activeAgent || 'CHAT' as AgentMode}
+            isProcessing={isProcessing || false}
+          />
+        )}
         {rightPanelTab === 'adaptive' && (
           <AdaptivePanel 
             activeAgent={activeAgent || 'CHAT' as AgentMode} 

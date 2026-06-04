@@ -68,7 +68,7 @@ export default function App() {
   const [agenticState, agenticActions] = useAgenticSystems();
 
   const [showBootSequence, setShowBootSequence] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools' | 'github' | 'workflow' | 'adaptive'>('telemetry');
+  const [rightPanelTab, setRightPanelTab] = useState<'telemetry' | 'tools' | 'github' | 'workflow' | 'graph' | 'adaptive'>('telemetry');
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
