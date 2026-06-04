@@ -20,6 +20,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { AGENTS, AgentMode, Message, AIProvider } from '../types';
+import { stripAgentSwitchTags } from '../services/promptUtils';
 
 // Icon Mapping to prevent undefined render errors
 const AGENT_ICONS: Record<string, React.ElementType> = {
@@ -117,7 +118,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                               ? 'bg-nexus-800 text-gray-200 border border-nexus-border'
                               : 'bg-black text-gray-300 border-l-2 border-nexus-border ' + AGENTS[msg.agent].color.replace('text-', 'border-')
                           }`}>
-                          {msg.content}
+                          {stripAgentSwitchTags(msg.content)}
                           {/* Streaming cursor */}
                           {msg.isStreaming && (
                             <span className="inline-block w-2 h-4 bg-nexus-accent ml-0.5 animate-pulse" />

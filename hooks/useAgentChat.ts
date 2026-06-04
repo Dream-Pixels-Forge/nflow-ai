@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from '../types';
 import { sendMessageToAgent } from '../services/aiService';
 import { sendMessageToAgentStream } from '../services/aiStreamService';
+import { stripAgentSwitchTags } from '../services/promptUtils';
 import { memoryManager, agentOrchestrator, contextManager, taskManager, collaborationManager } from '../src/agentic';
 import { loadMessages, saveMessage, saveMessages, clearMessages, loadSettings, saveSettings } from '../src/persistence';
 
@@ -70,6 +71,9 @@ export const useAgentChat = ({
   const [pendingSwitch, setPendingSwitch] = useState<AgentMode | null>(null);
   const [lastAgentResume, setLastAgentResume] = useState('');
   const toolIterationRef = useRef(0);
+  
+  // Auto-dispatch: when CHAT agent suggests SWITCH_TO, route the message to target agent
+  const pendingDispatchRef = useRef<{ targetAgent: AgentMode; message: string } | null>(null);
   
   // Update project context whenever files or tasks change
   useEffect(() => {
@@ -147,6 +151,106 @@ ${taskList || 'No tasks defined'}`;
 
     return () => clearTimeout(timeoutId);
   }, [agentHistories]);
+
+  // Auto-dispatch: when CHAT agent detects SWITCH_TO, route the message to target agent
+  useEffect(() => {
+    if (!pendingDispatchRef.current) return;
+    
+    const { targetAgent, message } = pendingDispatchRef.current;
+    pendingDispatchRef.current = null; // consume immediately
+
+    const dispatchToAgent = async () => {
+      // Add user message to target agent's history
+      const dispatchUserMsg: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: message,
+        timestamp: Date.now(),
+        agent: targetAgent
+      };
+      setAgentHistories(prev => ({
+        ...prev,
+        [targetAgent]: [...prev[targetAgent], dispatchUserMsg]
+      }));
+
+      // Stream response from target agent
+      const dispatchStreamMsgId = (Date.now() + 1).toString();
+      let dispatchStreamedContent = "";
+
+      try {
+        agentOrchestrator.startHeartbeat(targetAgent);
+        const stream = sendMessageToAgentStream(
+          message,
+          agentHistories[targetAgent],
+          targetAgent,
+          toolState,
+          lastAgentResume,
+          tasks,
+          settings
+        );
+
+        for await (const chunk of stream) {
+          if (chunk.done) {
+            const finalMsg: Message = {
+              id: dispatchStreamMsgId,
+              role: 'assistant',
+              content: dispatchStreamedContent,
+              timestamp: Date.now(),
+              agent: targetAgent,
+              grounding: chunk.sources ? { urls: chunk.sources } : undefined,
+            };
+            setAgentHistories(prev => ({
+              ...prev,
+              [targetAgent]: [...prev[targetAgent].filter(m => m.id !== dispatchStreamMsgId), finalMsg]
+            }));
+
+            // Extract files if applicable
+            if ([AgentMode.CODER, AgentMode.ARCHITECT, AgentMode.TEST, AgentMode.DEPLOY].includes(targetAgent)) {
+              extractFilesFromContent(dispatchStreamedContent);
+            }
+          } else {
+            dispatchStreamedContent += chunk.text;
+            setAgentHistories(prev => {
+              const messages = prev[targetAgent];
+              const existingIdx = messages.findIndex(m => m.id === dispatchStreamMsgId);
+              if (existingIdx >= 0) {
+                const updated = [...messages];
+                updated[existingIdx] = { ...updated[existingIdx], content: dispatchStreamedContent };
+                return { ...prev, [targetAgent]: updated };
+              } else {
+                return { ...prev, [targetAgent]: [...messages, {
+                  id: dispatchStreamMsgId,
+                  role: 'assistant',
+                  content: dispatchStreamedContent,
+                  timestamp: Date.now(),
+                  agent: targetAgent,
+                  isStreaming: true
+                }]};
+              }
+            });
+          }
+        }
+      } catch (error) {
+        const errMessage = error instanceof Error ? error.message : String(error);
+        const errorMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'system',
+          content: `DISPATCH ERROR: ${errMessage}`,
+          timestamp: Date.now(),
+          agent: targetAgent,
+          isError: true
+        };
+        setAgentHistories(prev => ({
+          ...prev,
+          [targetAgent]: [...prev[targetAgent], errorMsg]
+        }));
+      } finally {
+        agentOrchestrator.stopHeartbeat(targetAgent);
+      }
+    };
+
+    dispatchToAgent();
+  }, [agentHistories, toolState, lastAgentResume, tasks, settings]);
 
   // Parse tasks from PLAN agent output
   const extractTasksFromContent = (content: string) => {
@@ -288,11 +392,16 @@ ${taskList || 'No tasks defined'}`;
             pendingToolCalls = chunk.toolCalls;
           }
 
+          // Strip SWITCH_TO tags from displayed content (routing metadata, not user-facing)
+          const displayContent = activeAgent === AgentMode.CHAT 
+            ? stripAgentSwitchTags(streamedContent) 
+            : streamedContent;
+
           // Stream finished - finalize the message
           const finalMsg: Message = {
             id: streamingMsgId,
             role: 'assistant',
-            content: streamedContent,
+            content: displayContent,
             timestamp: Date.now(),
             agent: activeAgent,
             grounding: chunk.sources ? { urls: chunk.sources } : undefined,
@@ -426,7 +535,7 @@ ${taskList || 'No tasks defined'}`;
             }
           }
 
-          // Handle Orchestrator Suggestion with A2A Task
+          // Handle Orchestrator Suggestion — AUTO-DISPATCH
           if (chunk.suggestedAgent && chunk.suggestedAgent !== activeAgent) {
             setPendingSwitch(chunk.suggestedAgent);
             
@@ -446,6 +555,14 @@ ${taskList || 'No tasks defined'}`;
                 contextSummary: streamedContent.slice(0, 500)
               }
             });
+
+            // AUTO-DISPATCH: Route the message to the target agent
+            if (activeAgent === AgentMode.CHAT) {
+              pendingDispatchRef.current = {
+                targetAgent: chunk.suggestedAgent,
+                message: currentInput
+              };
+            }
           }
         } else {
           // Accumulate streamed text

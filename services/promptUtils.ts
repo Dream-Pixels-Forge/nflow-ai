@@ -51,6 +51,14 @@ export function extractAgentSwitch(responseText: string): {
   };
 }
 
+/**
+ * Strip all [[SWITCH_TO:AGENT]] tags from displayed text.
+ * Used by UI components to show clean text without routing metadata.
+ */
+export function stripAgentSwitchTags(text: string): string {
+  return text.replace(/\[\[SWITCH_TO:[A-Z_]+\]\]/g, '').trim();
+}
+
 export const getSystemInstruction = (
   mode: AgentMode, 
   projectContext?: string, 
