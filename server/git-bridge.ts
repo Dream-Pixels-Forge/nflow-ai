@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { exec, execSync } from 'child_process';
+import { exec, execSync, spawn } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -11,7 +11,17 @@ const PORT = 3001;
 app.use(cors({ origin: ['http://localhost:3000', 'http://127.0.0.1:3000'] }));
 app.use(express.json());
 
-// Helper: run git command with timeout
+/** Validate a git branch/tag name (alphanumeric, dots, slashes, hyphens, underscores) */
+function isValidRef(name: string): boolean {
+  return /^[\w.\-/]+$/.test(name) && name.length > 0 && name.length <= 256;
+}
+
+/** Validate a commit message (printable ASCII, <= 1 KB, no control chars except newline) */
+function isValidMessage(msg: string): boolean {
+  return msg.length > 0 && msg.length <= 1024 && /^[\x20-\x7E\n\r\t]+$/.test(msg);
+}
+
+// Helper: run git command with timeout using raw string (safe for hardcoded commands)
 async function runGit(command: string, timeout = 10000): Promise<{ success: boolean; output: string; error?: string }> {
   console.log(`[git-bridge] Executing: git ${command}`);
   try {
@@ -25,6 +35,28 @@ async function runGit(command: string, timeout = 10000): Promise<{ success: bool
     console.error(`[git-bridge] Error: ${errorMsg}`);
     return { success: false, output: '', error: errorMsg };
   }
+}
+
+// Helper: run git with args array (no shell, safe for user-supplied values)
+async function runGitSafe(args: string[], timeout = 10000): Promise<{ success: boolean; output: string; error?: string }> {
+  console.log(`[git-bridge] Executing: git ${args.join(' ')}`);
+  return new Promise((resolve) => {
+    const child = spawn('git', args, { timeout, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
+    child.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true, output: stdout.trim() || stderr.trim() });
+      } else {
+        resolve({ success: false, output: stdout.trim(), error: stderr.trim() || `Exit code ${code}` });
+      }
+    });
+    child.on('error', (err) => {
+      resolve({ success: false, output: '', error: err.message });
+    });
+  });
 }
 
 // Health check
@@ -79,12 +111,22 @@ app.get('/api/git/tags', async (_req, res) => {
 // POST /api/git/commit
 app.post('/api/git/commit', async (req, res) => {
   const { message, files } = req.body;
-  if (!message) {
-    res.json({ success: false, output: '', error: 'Commit message is required' });
+  if (!message || !isValidMessage(message)) {
+    res.json({ success: false, output: '', error: 'Invalid commit message' });
     return;
   }
-  const filesArg = files ? `-- ${files}` : '-a';
-  const result = await runGit(`commit -m "${message.replace(/"/g, '\\"')}" ${filesArg}`);
+  // Validate all file paths if provided
+  if (files) {
+    const fileList = Array.isArray(files) ? files : [files];
+    for (const f of fileList) {
+      if (!isValidRef(f)) {
+        res.json({ success: false, output: '', error: `Invalid file path: ${f}` });
+        return;
+      }
+    }
+  }
+  const args = ['commit', '-m', message, ...(files ? ['--', ...(Array.isArray(files) ? files : [files])] : ['-a'])];
+  const result = await runGitSafe(args);
   res.json(result);
 });
 
@@ -111,22 +153,22 @@ app.post('/api/git/diff', async (req, res) => {
 // POST /api/git/checkout
 app.post('/api/git/checkout', async (req, res) => {
   const { branch } = req.body;
-  if (!branch) {
-    res.json({ success: false, output: '', error: 'Branch name is required' });
+  if (!branch || !isValidRef(branch)) {
+    res.json({ success: false, output: '', error: 'Invalid branch name' });
     return;
   }
-  const result = await runGit(`checkout ${branch}`);
+  const result = await runGitSafe(['checkout', branch]);
   res.json(result);
 });
 
 // POST /api/git/merge
 app.post('/api/git/merge', async (req, res) => {
   const { branch } = req.body;
-  if (!branch) {
-    res.json({ success: false, output: '', error: 'Branch name is required' });
+  if (!branch || !isValidRef(branch)) {
+    res.json({ success: false, output: '', error: 'Invalid branch name' });
     return;
   }
-  const result = await runGit(`merge ${branch}`);
+  const result = await runGitSafe(['merge', branch]);
   res.json(result);
 });
 
