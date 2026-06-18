@@ -84,6 +84,9 @@ export const useAdkChat = ({
   const [lastAgentResume, setLastAgentResume] = useState("");
   const toolIterationRef = useRef(0);
   const runnerRef = useRef<Runner | null>(null);
+  const inputRef = useRef(input);
+  inputRef.current = input;
+
   // Initialize ADK Runner when settings point to Gemini (dynamic import — ADK is Node-only)
   useEffect(() => {
     if (settings.aiProvider !== "gemini") {
@@ -104,8 +107,6 @@ export const useAdkChat = ({
     });
     return () => { cancelled = true; };
   }, [settings.aiProvider, settings.geminiModel]);
-
-  const pendingDispatchRef = useRef<{ targetAgent: AM; message: string } | null>(null);
 
   // Project context sync
   useEffect(() => {
@@ -162,54 +163,6 @@ export const useAdkChat = ({
     return () => clearTimeout(id);
   }, [agentHistories, activeAgent]);
 
-  // Auto-dispatch: CHAT agent routes to specialist (disabled when ADK runner active)
-  useEffect(() => {
-    if (!pendingDispatchRef.current) return;
-    if (runnerRef.current) {
-      // ADK runner handles routing — clear pending dispatch
-      pendingDispatchRef.current = null;
-      return;
-    }
-    const { targetAgent, message } = pendingDispatchRef.current;
-    pendingDispatchRef.current = null;
-    (async () => {
-      const userMsg: Message = { id: Date.now().toString(), role: "user", content: message, timestamp: Date.now(), agent: targetAgent };
-      setAgentHistories((prev) => ({ ...prev, [targetAgent]: [...prev[targetAgent], userMsg] }));
-
-      const sid = streamId((Date.now() + 1).toString());
-      let acc = "";
-      try {
-        agentOrchestrator.startHeartbeat(targetAgent);
-        for await (const chunk of sendMessageToAgentStream(message, agentHistories[targetAgent], targetAgent, toolState, lastAgentResume, tasks, settings)) {
-          if (chunk.done) {
-            const final: Message = { id: sid, role: "assistant", content: acc, timestamp: Date.now(), agent: targetAgent, grounding: chunk.sources ? { urls: chunk.sources } : undefined };
-            setAgentHistories((prev) => ({ ...prev, [targetAgent]: [...prev[targetAgent].filter((m) => m.id !== sid), final] }));
-            if ([AM.CODER, AM.ARCHITECT, AM.TEST, AM.DEPLOY].includes(targetAgent)) extractFiles(acc);
-            ragManager.indexMessage("user", message, targetAgent).catch(() => {});
-            ragManager.indexMessage("assistant", acc, targetAgent).catch(() => {});
-          } else {
-            acc += chunk.text;
-            setAgentHistories((prev) => {
-              const msgs = prev[targetAgent];
-              const idx = msgs.findIndex((m) => m.id === sid);
-              if (idx >= 0) {
-                const upd = [...msgs];
-                upd[idx] = { ...upd[idx], content: acc };
-                return { ...prev, [targetAgent]: upd };
-              }
-              return { ...prev, [targetAgent]: [...msgs, { id: sid, role: "assistant", content: acc, timestamp: Date.now(), agent: targetAgent, isStreaming: true }] };
-            });
-          }
-        }
-      } catch (e) {
-        const err = e instanceof Error ? e.message : String(e);
-        setAgentHistories((prev) => ({ ...prev, [targetAgent]: [...prev[targetAgent], { id: (Date.now() + 1).toString(), role: "system", content: `DISPATCH ERROR: ${err}`, timestamp: Date.now(), agent: targetAgent, isError: true }] }));
-      } finally {
-        agentOrchestrator.stopHeartbeat(targetAgent);
-      }
-    })();
-  }, [agentHistories, toolState, lastAgentResume, tasks, settings]);
-
   // ── File / Task extraction ─────────────────────────────────────────
 
   function extractTasks(content: string) {
@@ -249,7 +202,7 @@ export const useAdkChat = ({
   // ── Send Message ───────────────────────────────────────────────────
 
   const handleSendMessage = useCallback(async (overrideInput?: string) => {
-    const msg = (overrideInput ?? input).trim();
+    const msg = (overrideInput ?? inputRef.current).trim();
     if (!msg || isProcessing) return;
 
     const currentInput = msg;
@@ -378,7 +331,7 @@ export const useAdkChat = ({
       setIsProcessing(false);
       agentOrchestrator.stopHeartbeat(activeAgent);
     }
-  }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
+  }, [isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
 
   // ── Message management ────────────────────────────────────────────
 
