@@ -53,17 +53,7 @@ const getStatusIcon = (status: AgentStatus) => {
   }
 };
 
-const getPhaseColor = (phase: AgentPhase): string => {
-  const colors: Record<AgentPhase, string> = {
-    P: 'bg-purple-900/50 text-purple-400',
-    R: 'bg-blue-900/50 text-blue-400',
-    I: 'bg-green-900/50 text-green-400',
-    D: 'bg-orange-900/50 text-orange-400',
-    E: 'bg-cyan-900/50 text-cyan-400',
-    S: 'bg-red-900/50 text-red-400'
-  };
-  return colors[phase] || 'bg-gray-900/50 text-gray-400';
-};
+import { getPhaseColor } from '../src/utils';
 
 // Map AgentMode to agent ID for agentic system lookup
 const AGENT_MODE_TO_ID: Record<AgentMode, string> = {
