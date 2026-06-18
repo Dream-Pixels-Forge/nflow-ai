@@ -1,7 +1,7 @@
 /**
  * CryptoProvider - AES-256-GCM encryption tests
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import {
   generateAESKey,
   encryptAES,
@@ -12,7 +12,25 @@ import {
   storeKeyInDB,
   loadKeyFromDB
 } from '../../../../src/security/secret-manager/CryptoProvider';
+import { createMockSubtle } from '../../../../tests/mocks/webCrypto';
+import { createMockIndexedDB } from '../../../../tests/mocks/indexedDB';
 
+// Provide Web Crypto API + IndexedDB in jsdom test environment
+beforeAll(() => {
+  const mockSubtle = createMockSubtle();
+  vi.stubGlobal('crypto', {
+    getRandomValues: (arr: Uint8Array) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+      return arr;
+    },
+    subtle: mockSubtle,
+  });
+  vi.stubGlobal('indexedDB', createMockIndexedDB());
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 describe('CryptoProvider', () => {
   describe('generateAESKey', () => {
     it('should generate a CryptoKey for AES-GCM', async () => {

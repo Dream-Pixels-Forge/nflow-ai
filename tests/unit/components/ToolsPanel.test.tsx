@@ -81,11 +81,11 @@ describe('ToolsPanel - Context Window', () => {
         messages={[]}
       />
     );
-    expect(screen.getByText('0% (0K chars)')).toBeTruthy();
+    expect(screen.getByText('0% (0.0K tokens)')).toBeTruthy();
   });
 
   it('tracks message content in context calculation', () => {
-    // 3000 chars of messages should show ~9% (3000 / 32000 * 100)
+    // 3000 chars → ~750 tokens → 0.75% → rounded to 1%
     const messages = makeMessages(['x'.repeat(3000)]);
     render(
       <ToolsPanel
@@ -94,8 +94,7 @@ describe('ToolsPanel - Context Window', () => {
         messages={messages}
       />
     );
-    // 3000 / 32000 = 0.09375 -> 9%
-    expect(screen.getByText('9% (3K chars)')).toBeTruthy();
+    expect(screen.getByText('1% (0.8K tokens)')).toBeTruthy();
   });
 
   it('includes RAG content in context calculation', () => {
@@ -110,8 +109,8 @@ describe('ToolsPanel - Context Window', () => {
         messages={[]}
       />
     );
-    // 10000 / 32000 = 0.3125 -> 31%
-    expect(screen.getByText('31% (10K chars)')).toBeTruthy();
+    // 10000 chars → 2500 tokens → 2.5% → rounded to 3%
+    expect(screen.getByText('3% (2.5K tokens)')).toBeTruthy();
   });
 
   it('combines messages and RAG content for total context', () => {
@@ -127,8 +126,8 @@ describe('ToolsPanel - Context Window', () => {
         messages={messages}
       />
     );
-    // (6000 + 10000) / 32000 = 0.5 -> 50%
-    expect(screen.getByText('50% (16K chars)')).toBeTruthy();
+    // (6000 + 10000) = 16000 chars → 4000 tokens → 4% → rounded to 4%
+    expect(screen.getByText('4% (4.0K tokens)')).toBeTruthy();
   });
 
   it('caps at 100% when context exceeds limit', () => {
@@ -144,8 +143,8 @@ describe('ToolsPanel - Context Window', () => {
         messages={messages}
       />
     );
-    // (10000 + 30000) / 32000 = 1.25 -> capped at 100%
-    expect(screen.getByText('100% (40K chars)')).toBeTruthy();
+    // (10000 + 30000) = 40000 chars → 10000 tokens → 10%
+    expect(screen.getByText('10% (10.0K tokens)')).toBeTruthy();
   });
 
   it('falls back gracefully when messages prop is not provided', () => {
@@ -155,6 +154,6 @@ describe('ToolsPanel - Context Window', () => {
         setToolState={setToolState}
       />
     );
-    expect(screen.getByText('0% (0K chars)')).toBeTruthy();
+    expect(screen.getByText('0% (0.0K tokens)')).toBeTruthy();
   });
 });
