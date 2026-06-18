@@ -23,7 +23,6 @@ import { HITLDialog } from './components/HITLDialog';
 import { hitlManager, HITLRequest } from './src/pipelines/HITLManager';
 import { toolExecutor } from './src/tools/toolExecutor';
 import { BUILTIN_TOOLS } from './src/tools';
-import { connectBridge } from './src/tools/webSocketBridge';
 import { INITIAL_FILES } from './src/constants';
 
 // Helper to cycle enum
