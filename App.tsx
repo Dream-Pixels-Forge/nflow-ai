@@ -245,8 +245,6 @@ export default function App() {
       return response.approved ? 'approved' : 'denied';
     });
 
-    // Connect WebSocket bridge for tool execution
-    connectBridge();
   }, []);
 
   // Startup tracking and dependency checks

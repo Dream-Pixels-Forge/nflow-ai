@@ -2,9 +2,9 @@
  * WebSocket Backend Bridge
  *
  * Connects the browser-based ToolExecutor to the local tools-server.mjs.
- * Handles connection lifecycle, request/response matching, and reconnection.
+ * Handles connection lifecycle and request/response matching.
+ * Connect is triggered on-demand when a tool execution is requested.
  */
-
 import { toolExecutor, type BackendBridge, type ShellOutput, type FileEntry } from "./toolExecutor";
 
 // ── WebSocket Bridge Implementation ─────────────────────────────────
@@ -15,24 +15,12 @@ export class WebSocketBridge implements BackendBridge {
   #pending = new Map<string, { resolve: (v: string) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   #requestId = 0;
   #connected = false;
-  #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #onConnectionChange?: (connected: boolean) => void;
-  #reconnectAttempt = 0;
-  static #BASE_INTERVAL = 1000;
-  static #MAX_INTERVAL = 60000;
 
   constructor(url = "ws://localhost:7700") {
     this.#url = url;
   }
 
-  #scheduleReconnect(): void {
-    this.#reconnectAttempt++;
-    const delay = Math.min(
-      WebSocketBridge.#BASE_INTERVAL * Math.pow(2, this.#reconnectAttempt - 1),
-      WebSocketBridge.#MAX_INTERVAL,
-    );
-    this.#reconnectTimer = setTimeout(() => this.connect(), delay);
-  }
 
   get connected(): boolean {
     return this.#connected;
@@ -50,7 +38,6 @@ export class WebSocketBridge implements BackendBridge {
 
       this.#ws.onopen = () => {
         this.#connected = true;
-        this.#reconnectAttempt = 0;
         this.#onConnectionChange?.(true);
       };
 
@@ -73,7 +60,6 @@ export class WebSocketBridge implements BackendBridge {
         this.#onConnectionChange?.(false);
         this.#rejectAll("Bridge disconnected");
         this.#ws = null;
-        this.#scheduleReconnect();
       };
 
       this.#ws.onerror = () => {
@@ -88,10 +74,6 @@ export class WebSocketBridge implements BackendBridge {
   }
 
   disconnect(): void {
-    if (this.#reconnectTimer) {
-      clearTimeout(this.#reconnectTimer);
-      this.#reconnectTimer = null;
-    }
     this.#rejectAll("Bridge shutting down");
     this.#ws?.close();
     this.#ws = null;
