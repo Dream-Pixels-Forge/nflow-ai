@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal as TerminalIcon, PanelRightOpen } from 'lucide-react';
 import { AGENTS, AgentMode, Message, ToolState, Task, AppSettings, VirtualFile } from './types';
-import { sendMessageToAgent } from './services/aiService';
 import { initializeStartupTracking, completeStartup, reportStartupError, setStartupStatusCallback } from './src/utils/StartupTracker';
 import { checkOllamaDependencies } from './src/utils/DependencyChecker';
 import { TaskDashboard } from './components/TaskDashboard';
@@ -16,13 +15,14 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { InputArea } from './components/InputArea';
 import { RightPanel } from './components/RightPanel';
-import { useAgentChat } from './hooks/useAgentChat';
+import { useAdkChat } from './hooks/useAdkChat';
 import { useCommandParser } from './hooks/useCommandParser';
 import { memoryManager, agentCardManager } from './src/agentic';
 import { useAgenticSystems } from './hooks/useAgenticSystems';
 import { HITLDialog } from './components/HITLDialog';
 import { hitlManager, HITLRequest } from './src/pipelines/HITLManager';
 import { toolExecutor } from './src/tools/toolExecutor';
+import { connectBridge } from './src/tools/webSocketBridge';
 
 // Helper to cycle enum
 const getNextAgent = (current: AgentMode): AgentMode => {
@@ -159,7 +159,7 @@ export default function App() {
     showUndoToast,
     rerunMessage,
     clearAllMessages
-  } = useAgentChat({
+  } = useAdkChat({
     activeAgent,
     toolState,
     settings,
@@ -241,6 +241,9 @@ export default function App() {
       );
       return response.approved ? 'approved' : 'denied';
     });
+
+    // Connect WebSocket bridge for tool execution
+    connectBridge();
   }, []);
 
   // Startup tracking and dependency checks

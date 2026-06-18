@@ -21,11 +21,9 @@ export class StateKey<T = any> {
     this.defaultValue = defaultValue;
   }
 
-  /**
-   * Get value from context
-   */
   get(context: PipelineContext): T | undefined {
-    return context.state.get(this.key) ?? this.defaultValue;
+    const v = context.state.get(this.key);
+    return v !== undefined ? (v as T) : this.defaultValue;
   }
 
   /**

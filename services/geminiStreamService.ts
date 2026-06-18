@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
-import { getSystemInstruction } from "./promptUtils";
+import { getSystemInstruction, buildContextInjection } from "./promptUtils";
 
 export interface StreamChunk {
   text: string;
@@ -33,27 +33,8 @@ export const sendMessageToGeminiStream = async function* (
 
   const ai = new GoogleGenAI({ apiKey });
   
-  // Construct Context from Tools
-  let contextInjection = "";
-  
-  // RAG: Inject file content
-  if (tools.rag.active && tools.rag.content.length > 0) {
-    contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base. Use it to answer the user's request:\n${tools.rag.content.join('\n---\n')}\n`;
-  }
-  
-  // MCP: Simulate connection context
-  if (tools.mcp.active) {
-    contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nYou are connected to a local MCP server on port ${tools.mcp.port}. You can assume access to local system commands if the user requests them.`;
-  }
-
-  // Fetch: Prepare prompt for search
-  if (tools.fetch.active) {
-    if (tools.fetch.targetUrl) {
-       contextInjection += `\n\n[SYSTEM: WEB FETCH CONFIG]\nThe user is interested in this specific URL: ${tools.fetch.targetUrl}. Use your search tool to find information about it if needed.`;
-    } else {
-       contextInjection += `\n\n[SYSTEM: WEB FETCH CONFIG]\nWeb search is ENABLED. You may search the web to answer the user's request.`;
-    }
-  }
+  // Construct Context from Tools (with RAG auto-search)
+  const contextInjection = buildContextInjection(tools, prompt);
 
   // Filter history to valid chat roles (user/assistant) and map to Gemini API format (user/model)
   const recentHistory = history

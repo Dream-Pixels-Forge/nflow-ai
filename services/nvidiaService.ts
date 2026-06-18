@@ -62,7 +62,7 @@ export const sendMessageToNVIDIA = async (
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
-    const contextInjection = buildContextInjection(tools);
+    const contextInjection = buildContextInjection(tools, prompt);
 
     // Build messages array
     const systemMsg: NVIDIAMessage = {
@@ -122,6 +122,110 @@ export const sendMessageToNVIDIA = async (
     };
   }
 };
+
+// ── Streaming ──────────────────────────────────────────────────────
+
+export async function* sendMessageToNVIDIAStream(
+  prompt: string,
+  history: Message[],
+  agent: AgentMode,
+  tools: ToolState,
+  projectSummary: string = "",
+  currentTasks: Task[] = [],
+  suggestionLevel: SuggestionLevel = 'medium',
+  config: NVIDIAConfig = DEFAULT_NVIDIA_CONFIG,
+  chatMode: ChatMode = 'agent'
+): AsyncGenerator<{ text: string; done: boolean; suggestedAgent?: AgentMode }> {
+  const contextInjection = buildContextInjection(tools, prompt);
+
+  const systemMsg: NVIDIAMessage = {
+    role: 'system',
+    content: getSystemInstruction(agent, projectSummary, currentTasks, suggestionLevel, chatMode)
+  };
+
+  const recentHistory: NVIDIAMessage[] = history
+    .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+    .slice(-15)
+    .map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+
+  const userMsg: NVIDIAMessage = {
+    role: 'user',
+    content: contextInjection ? `${contextInjection}\n\nUSER REQUEST: ${prompt}` : prompt
+  };
+
+  const messages = [systemMsg, ...recentHistory, userMsg];
+
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 4096,
+      stream: true
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`NVIDIA API Error: ${response.status} ${errorData.error?.message || response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullText = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") {
+          const { cleanText, suggestedAgent } = extractAgentSwitch(fullText);
+          yield { text: "", done: true, suggestedAgent };
+          return;
+        }
+
+        try {
+          const parsed: unknown = JSON.parse(data);
+          if (parsed !== null && typeof parsed === "object" && "choices" in parsed) {
+            const obj = parsed as Record<string, unknown>;
+            const choices = obj.choices as Array<Record<string, unknown>> | undefined;
+            const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+            if (typeof delta?.content === "string") {
+              fullText += delta.content;
+              yield { text: delta.content, done: false };
+            }
+          }
+        } catch {
+          // Skip malformed SSE lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const { cleanText, suggestedAgent } = extractAgentSwitch(fullText);
+  yield { text: "", done: true, suggestedAgent };
+}
 
 export const getNVIDIAModels = async (apiKey: string): Promise<string[]> => {
   try {

@@ -1,7 +1,7 @@
 import { sendMessageToGeminiStream, StreamChunk } from "./geminiStreamService";
 import { sendMessageToOllama, sendMessageToOllamaStream } from "./ollamaService";
 import { sendMessageToOpenRouter, sendMessageToOpenRouterStream, DEFAULT_OPENROUTER_CONFIG } from "./openRouterService";
-import { sendMessageToNVIDIA, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
+import { sendMessageToNVIDIA, sendMessageToNVIDIAStream, DEFAULT_NVIDIA_CONFIG } from "./nvidiaService";
 import { AgentMode, Message, ToolState, Task, AppSettings } from "../types";
 
 const TECHNICAL_AGENTS = [
@@ -58,24 +58,22 @@ export const sendMessageToAgentStream = async function* (
       );
       break;
     }
+    case 'nvidia': {
+      const config = {
+        apiKey: settings.nvidiaApiKey || '',
+        model: settings.nvidiaModel || DEFAULT_NVIDIA_CONFIG.model,
+        baseUrl: 'https://integrate.api.nvidia.com/v1'
+      };
+      yield* sendMessageToNVIDIAStream(
+        prompt, history, agent, tools, projectSummary, currentTasks, settings.suggestionLevel, config, settings.chatMode
+      );
+      break;
+    }
 
     default: {
-      // NVIDIA: simulated streaming (single response chunked)
+      // Non-streaming fallback for unknown providers
       const response = await fetchProviderResponse(prompt, history, agent, tools, projectSummary, currentTasks, settings);
-      const chunkSize = 10;
-      for (let i = 0; i < response.text.length; i += chunkSize) {
-        yield {
-          text: response.text.slice(i, i + chunkSize),
-          done: false
-        };
-        await new Promise<void>((resolve) => { setTimeout(resolve, 20); resolve(); });
-      }
-      yield {
-        text: "",
-        done: true,
-        sources: response.sources,
-        suggestedAgent: response.suggestedAgent
-      };
+      yield { text: response.text, done: true, sources: response.sources, suggestedAgent: response.suggestedAgent };
       break;
     }
   }

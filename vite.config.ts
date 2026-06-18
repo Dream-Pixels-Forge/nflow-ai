@@ -38,6 +38,11 @@ export default defineConfig({
       }
     })
   ],
+  // ADK is a Node.js SDK; exclude from dev pre-bundle.
+  // The useAdkChat hook imports it dynamically so it won't block the app.
+  optimizeDeps: {
+    exclude: ["@google/adk"],
+  },
   server: {
     port: 3000,
     open: true,

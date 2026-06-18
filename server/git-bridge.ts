@@ -32,11 +32,49 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// POST /api/git/status
-app.post('/api/git/status', async (_req, res) => {
-  const result = await runGit('status --porcelain');
-  res.json(result);
+// ── Read endpoints (GET, used by localGitService) ──────────────────
+
+// GET /api/git/status — returns { branch, ahead, behind, dirty }
+app.get('/api/git/status', async (_req, res) => {
+  const branch = await runGit('branch --show-current');
+  const status = await runGit('status --porcelain');
+  const ahead = await runGit('rev-list --count @{u}..HEAD').catch(() => ({ success: true, output: '0' }));
+  const behind = await runGit('rev-list --count HEAD..@{u}').catch(() => ({ success: true, output: '0' }));
+  const lines = status.output ? status.output.split('\n').filter(Boolean) : [];
+  res.json({ branch: branch.output.trim(), ahead: parseInt(ahead.output) || 0, behind: parseInt(behind.output) || 0, dirty: lines.length });
 });
+
+// GET /api/git/log — query ?count=20, returns { commits: Array<{hash, message, date}> }
+app.get('/api/git/log', async (req, res) => {
+  const count = parseInt(String(req.query.count ?? 20)) || 20;
+  const result = await runGit(`log --oneline --format="%H|%s|%ai" -${count}`);
+  const commits = result.output.split('\n').filter(Boolean).map(line => {
+    const [hash, ...rest] = line.split('|');
+    const message = rest.slice(0, -2).join('|') || rest[0] || '';
+    const date = rest[rest.length - 1] || '';
+    return { hash, message, date };
+  });
+  res.json({ commits });
+});
+
+// GET /api/git/branches — returns { branches: string[] }
+app.get('/api/git/branches', async (_req, res) => {
+  const result = await runGit('branch -a --format="%(refname:short)"');
+  const branches = result.output.split('\n').filter(Boolean);
+  res.json({ branches });
+});
+
+// GET /api/git/tags — returns { tags: LocalGitRelease[] }
+app.get('/api/git/tags', async (_req, res) => {
+  const result = await runGit('tag --sort=-creatordate --format="%(refname:short)|%(subject)|%(creatordate:iso)"');
+  const tags = result.output.split('\n').filter(Boolean).map(line => {
+    const [tag_name, name, created_at] = line.split('|');
+    return { tag_name: tag_name || name || '', name: name || tag_name || '', draft: false, prerelease: false, created_at: created_at || '', body: '' };
+  });
+  res.json({ tags });
+});
+
+// ── Write endpoints (POST, mutations) ─────────────────────────────
 
 // POST /api/git/commit
 app.post('/api/git/commit', async (req, res) => {
@@ -62,24 +100,11 @@ app.post('/api/git/pull', async (_req, res) => {
   res.json(result);
 });
 
-// POST /api/git/log
-app.post('/api/git/log', async (req, res) => {
-  const { count = 20 } = req.body;
-  const result = await runGit(`log --oneline -${count}`);
-  res.json(result);
-});
-
 // POST /api/git/diff
 app.post('/api/git/diff', async (req, res) => {
   const { staged } = req.body || {};
   const flag = staged ? '--staged' : '';
   const result = await runGit(`diff ${flag}`);
-  res.json(result);
-});
-
-// POST /api/git/branch
-app.post('/api/git/branch', async (_req, res) => {
-  const result = await runGit('branch -a');
   res.json(result);
 });
 

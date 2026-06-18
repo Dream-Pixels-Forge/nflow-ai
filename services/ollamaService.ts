@@ -1,6 +1,6 @@
 
 import { AgentMode, Message, ToolState, Task, SuggestionLevel, ChatMode } from "../types";
-import { getSystemInstruction } from "./promptUtils";
+import { getSystemInstruction, buildContextInjection } from "./promptUtils";
 
 export interface OllamaResponse {
   model: string;
@@ -61,20 +61,8 @@ export const sendMessageToOllama = async (
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
-    // Construct Context from Tools
-    let contextInjection = "";
-    
-    if (tools.rag.active && tools.rag.content.length > 0) {
-      contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base:\n${tools.rag.content.join('\n---\n')}\n`;
-    }
-    
-    if (tools.mcp.active) {
-      contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
-    }
-
-    if (tools.fetch.active) {
-       contextInjection += `\n\n[SYSTEM: WEB FETCH]\n(Note: Local models cannot browse the web directly, but simulated context is: URL target ${tools.fetch.targetUrl || 'general'})`;
-    }
+    // Construct Context from Tools (with RAG auto-search)
+    const contextInjection = buildContextInjection(tools, prompt);
 
     // Build messages array for Ollama
     const systemMsg = {
@@ -175,13 +163,7 @@ export async function* sendMessageToOllamaStream(
   model: string = 'llama3',
   chatMode: ChatMode = 'agent'
 ): AsyncGenerator<OllamaStreamChunk> {
-  let contextInjection = "";
-  if (tools.rag.active && tools.rag.content.length > 0) {
-    contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\n${tools.rag.content.join('\n---\n')}\n`;
-  }
-  if (tools.mcp.active) {
-    contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
-  }
+  const contextInjection = buildContextInjection(tools, prompt);
 
   const systemMsg = {
     role: 'system',

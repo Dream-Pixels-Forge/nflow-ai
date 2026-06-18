@@ -1,22 +1,19 @@
 /**
- * NexusFlow Agents - ADK-inspired agent system
- * 
- * Type-safe, composable agents with lifecycle hooks and tool validation.
+ * NexusFlow Agents — ADK-powered agent system
+ *
+ * Re-exports from src/agents/agents.ts (ADK LlmAgent / FunctionTool instances).
+ * Import from here:
+ *   import { createAgent, coderAgent, readFileTool } from '../agents';
  */
 
-// Core classes
-export { NexusAgent, createAgent } from './NexusAgent';
-export type { AgentConfig, AgentContext, AgentResponse, LifecycleHooks } from './NexusAgent';
+export { LlmAgent as NexusAgent } from "@google/adk";
+export { createAdkAgent as createAgent } from "../adk/agents";
+export type { AgentOptions as AgentConfig } from "../adk/agents";
 
-export { Tool, createTool } from './Tool';
-export type { ToolConfig, ToolResult } from './Tool';
+export { FunctionTool as Tool } from "@google/adk";
 
-export { AgentOrchestrator, createOrchestrator } from './AgentOrchestrator';
-export type { OrchestratorConfig, RoutingRule, HandoffRecord } from './AgentOrchestrator';
-
-// Pre-built agents and tools
+// ── Pre-built agents ────────────────────────────────────────────────
 export {
-  // Agents
   chatAgent,
   planAgent,
   architectAgent,
@@ -27,13 +24,15 @@ export {
   monitorAgent,
   createDevTeam,
   ALL_AGENTS,
-  
-  // Tools
+} from "./agents";
+
+// ── Pre-built tools ─────────────────────────────────────────────────
+export {
   readFileTool,
   writeFileTool,
   runTestsTool,
   scanSecurityTool,
   deployTool,
   checkMetricsTool,
-  ALL_TOOLS
-} from './agents';
+  ALL_TOOLS,
+} from "./agents";

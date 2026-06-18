@@ -1,16 +1,27 @@
 
 import { AgentMode, Task, SuggestionLevel, ChatMode, ToolState } from "../types";
 import { learningManager } from "../src/agentic/LearningManager";
+import { ragManager } from "../src/rag/RAGManager";
 
 // ── Shared utilities for AI service providers ────────────────────────
 
 /**
  * Build context injection string from tool state.
  * Used by all AI service providers (Ollama, OpenRouter, NVIDIA, Gemini).
+ * Optionally injects RAG context from the vector store based on the user's query.
  */
-export function buildContextInjection(tools: ToolState): string {
+export function buildContextInjection(tools: ToolState, userQuery?: string): string {
   let context = "";
   
+  // RAG: auto-search vector store for relevant context
+  if (userQuery) {
+    const ragContext = ragManager.searchContext(userQuery, 500);
+    if (ragContext) {
+      context += `\n\n[SYSTEM: RAG CONTEXT]\nRelevant information from project history:\n${ragContext}\n`;
+    }
+  }
+  
+  // RAG: manually loaded content (legacy)
   if (tools.rag.active && tools.rag.content.length > 0) {
     context += `\n\n[SYSTEM: RAG CONTEXT LOADED]\nThe following information is provided from the local knowledge base:\n${tools.rag.content.join('\n---\n')}\n`;
   }

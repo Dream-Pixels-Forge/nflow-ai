@@ -91,7 +91,7 @@ describe('AgentEvaluator', () => {
   it('should run evaluation with a mock function and return results', async () => {
     const evaluator = new AgentEvaluator();
     const mockFn = async (input: string) => `I can help with: ${input} - try { JSON.parse(input) } catch {}`;
-    const result = await evaluator.runEvaluation('coder', coderSuite, mockFn);
+    const result = await evaluator.runEvaluation(coderSuite, mockFn);
     expect(result.suiteName).toBe('Coder Quality');
     expect(result.results).toHaveLength(5);
     expect(result.totalCases).toBe(5);

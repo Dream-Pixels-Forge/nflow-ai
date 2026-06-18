@@ -62,7 +62,7 @@ export const sendMessageToOpenRouter = async (
 ): Promise<{ text: string; sources?: string[]; suggestedAgent?: AgentMode }> => {
   
   try {
-    const contextInjection = buildContextInjection(tools);
+    const contextInjection = buildContextInjection(tools, prompt);
 
     // Build messages array
     const systemMsg: OpenRouterMessage = {
@@ -183,13 +183,7 @@ export async function* sendMessageToOpenRouterStream(
   config: OpenRouterConfig = DEFAULT_OPENROUTER_CONFIG,
   chatMode: ChatMode = 'agent'
 ): AsyncGenerator<OpenRouterStreamChunk> {
-  let contextInjection = "";
-  if (tools.rag.active && tools.rag.content.length > 0) {
-    contextInjection += `\n\n[SYSTEM: RAG CONTEXT LOADED]\n${tools.rag.content.join('\n---\n')}\n`;
-  }
-  if (tools.mcp.active) {
-    contextInjection += `\n\n[SYSTEM: MCP BRIDGE ACTIVE]\nConnected to local MCP server on port ${tools.mcp.port}.`;
-  }
+  const contextInjection = buildContextInjection(tools, prompt);
 
   const systemMsg: OpenRouterMessage = {
     role: 'system',

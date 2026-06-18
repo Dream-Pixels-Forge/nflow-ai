@@ -118,7 +118,8 @@ export class DynamicInstructionGenerator {
     // Replace {{state.key}} with state values
     const stateRegex = /\{\{state\.(\w+)\}\}/g;
     result = result.replace(stateRegex, (match, key) => {
-      return context.state.get(key) || match;
+      const val = context.state.get(key);
+      return val !== undefined ? String(val) : match;
     });
 
     // Replace {{input}} with input
@@ -127,10 +128,10 @@ export class DynamicInstructionGenerator {
     // Replace {{timestamp}} with timestamp
     result = result.replace(/\{\{timestamp\}\}/g, context.timestamp);
 
-    // Replace {{metadata.key}} with metadata values
     const metadataRegex = /\{\{metadata\.(\w+)\}\}/g;
     result = result.replace(metadataRegex, (match, key) => {
-      return context.metadata[key] || match;
+      const val = context.metadata[key];
+      return val !== undefined ? String(val) : match;
     });
 
     return result;

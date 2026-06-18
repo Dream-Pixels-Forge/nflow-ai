@@ -5,15 +5,19 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
+    "adk:web": "adk web",
+    "adk:run": "adk run",
     "build": "vite build",
     "preview": "vite preview",
     "check-deps": "tsx scripts/check-dependencies.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "server": "cd server && pnpm dev",
-    "dev:all": "pnpm dev & pnpm server"
+    "tool-server": "node tools-server.mjs --root .",
+    "dev:all": "pnpm dev & pnpm server & pnpm tool-server"
   },
   "dependencies": {
+    "@google/adk": "^1.2.0",
     "@google/genai": "^0.2.0",
     "@huggingface/transformers": "^4.2.0",
     "lucide-react": "^0.344.0",
