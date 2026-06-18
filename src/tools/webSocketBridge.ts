@@ -17,9 +17,21 @@ export class WebSocketBridge implements BackendBridge {
   #connected = false;
   #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #onConnectionChange?: (connected: boolean) => void;
+  #reconnectAttempt = 0;
+  static #BASE_INTERVAL = 1000;
+  static #MAX_INTERVAL = 60000;
 
   constructor(url = "ws://localhost:7700") {
     this.#url = url;
+  }
+
+  #scheduleReconnect(): void {
+    this.#reconnectAttempt++;
+    const delay = Math.min(
+      WebSocketBridge.#BASE_INTERVAL * Math.pow(2, this.#reconnectAttempt - 1),
+      WebSocketBridge.#MAX_INTERVAL,
+    );
+    this.#reconnectTimer = setTimeout(() => this.connect(), delay);
   }
 
   get connected(): boolean {
@@ -38,6 +50,7 @@ export class WebSocketBridge implements BackendBridge {
 
       this.#ws.onopen = () => {
         this.#connected = true;
+        this.#reconnectAttempt = 0;
         this.#onConnectionChange?.(true);
       };
 
@@ -60,8 +73,7 @@ export class WebSocketBridge implements BackendBridge {
         this.#onConnectionChange?.(false);
         this.#rejectAll("Bridge disconnected");
         this.#ws = null;
-        // Auto-reconnect
-        this.#reconnectTimer = setTimeout(() => this.connect(), 3000);
+        this.#scheduleReconnect();
       };
 
       this.#ws.onerror = () => {
