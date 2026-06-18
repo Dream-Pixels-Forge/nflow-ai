@@ -42,7 +42,7 @@ export interface UseAgentChatReturn {
   isProcessing: boolean;
   pendingSwitch: AgentMode | null;
   setPendingSwitch: (agent: AgentMode | null) => void;
-  handleSendMessage: () => Promise<void>;
+  handleSendMessage: (overrideInput?: string) => Promise<void>;
   deleteMessage: (messageId: string) => void;
   undoDelete: () => void;
   showUndoToast: boolean;
@@ -82,7 +82,6 @@ export const useAdkChat = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<AM | null>(null);
   const [lastAgentResume, setLastAgentResume] = useState("");
-  const rerunHandlerRef = useRef<() => Promise<void>>(async () => {});
   const toolIterationRef = useRef(0);
   const runnerRef = useRef<Runner | null>(null);
   // Initialize ADK Runner when settings point to Gemini (dynamic import — ADK is Node-only)
@@ -249,10 +248,11 @@ export const useAdkChat = ({
 
   // ── Send Message ───────────────────────────────────────────────────
 
-  const handleSendMessage = useCallback(async () => {
-    if (!input.trim() || isProcessing) return;
+  const handleSendMessage = useCallback(async (overrideInput?: string) => {
+    const msg = (overrideInput ?? input).trim();
+    if (!msg || isProcessing) return;
 
-    const currentInput = input;
+    const currentInput = msg;
     setInput("");
     setIsProcessing(true);
     setPendingSwitch(null);
@@ -379,8 +379,6 @@ export const useAdkChat = ({
       agentOrchestrator.stopHeartbeat(activeAgent);
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
-  // Keep rerunHandlerRef current
-  rerunHandlerRef.current = handleSendMessage;
 
   // ── Message management ────────────────────────────────────────────
 
@@ -410,29 +408,14 @@ export const useAdkChat = ({
 
   const rerunMessage = useCallback(
     (messageId: string) => {
-      const msg = agentHistories[activeAgent].find((m) => m.id === messageId);
+      const msgs = agentHistories[activeAgent];
+      const msg = msgs.find((m) => m.id === messageId);
       if (msg && msg.role === "user") {
-        setInput(msg.content);
+        handleSendMessage(msg.content);
       }
     },
-    [activeAgent, agentHistories],
+    [activeAgent, agentHistories, handleSendMessage],
   );
-
-  // Trigger send when rerunMessage sets input — auto-submit after a brief delay
-  const rerunInputRef = useRef("");
-  useEffect(() => {
-    if (rerunInputRef.current !== input && input) {
-      rerunInputRef.current = input;
-      const prev = input;
-      const handler = rerunHandlerRef.current;
-      const id = setTimeout(() => {
-        setInput(prev);
-        handler();
-      }, 50);
-      return () => clearTimeout(id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input]);
 
   const clearAllMessages = useCallback(() => {
     const h = {} as Record<AM, Message[]>;

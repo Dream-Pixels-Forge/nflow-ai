@@ -204,23 +204,22 @@ export default function App() {
   });
 
   // Wrapper for handleSendMessage that includes command parsing
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = async (overrideInput?: string) => {
+    const msg = (overrideInput ?? input).trim();
+    if (!msg) return;
     
-    // Check if it's a command
-    if (input.startsWith('/')) {
-      const wasCommand = parseCommand(input);
+    // Only parse commands for keyboard-typed input, not reruns
+    if (!overrideInput && msg.startsWith('/')) {
+      const wasCommand = parseCommand(msg);
       if (wasCommand) {
         setInput('');
         return;
       }
     }
     
-    // Otherwise send as message
-    await baseHandleSendMessage();
+    await baseHandleSendMessage(overrideInput);
   };
 
-  // Handle key down for input
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
