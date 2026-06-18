@@ -21,7 +21,21 @@ import { loadMessages, saveMessage, clearMessages } from "../src/persistence";
 import { sendMessageToAgentStream } from "../services/aiStreamService";
 import { stripAgentSwitchTags } from "../services/promptUtils";
 
-let adkModule: Promise<typeof import("../src/adk/index")> | null = null;
+let adkModule: typeof import("../src/adk/index") | null = null;
+let adkModulePromise: Promise<typeof import("../src/adk/index") | null> | null = null;
+
+/**
+ * Lazily load ADK. Returns null if ADK isn't available (browser, no API key, etc.).
+ * Only attempts the dynamic import once; result is cached for the session.
+ */
+async function loadAdkModule(): Promise<typeof import("../src/adk/index") | null> {
+  if (adkModule) return adkModule;
+  if (adkModulePromise) return adkModulePromise;
+  adkModulePromise = import("../src/adk/index")
+    .then((mod) => { adkModule = mod; return mod; })
+    .catch(() => null);
+  return adkModulePromise;
+}
 
 // ── Public API (same as useAgentChat) ─────────────────────────────────
 
@@ -87,25 +101,28 @@ export const useAdkChat = ({
   const inputRef = useRef(input);
   inputRef.current = input;
 
-  // Initialize ADK Runner when settings point to Gemini (dynamic import — ADK is Node-only)
-  useEffect(() => {
-    if (settings.aiProvider !== "gemini") {
-      runnerRef.current = null;
-      return;
+  // ADK Runner is initialised lazily on first Gemini message (see getRunner).
+  // We do NOT eagerly import @google/adk on mount — it pulls in Node.js
+  // built-ins (crypto, fs, …) that crash the browser with
+  // "Failed to resolve module specifier" if loaded at page-start.
+
+  /**
+   * Lazily load ADK and return a Runner, or null if ADK isn't available.
+   * Safe to call repeatedly — the module import and runner creation are cached.
+   */
+  const getRunner = useCallback(async (): Promise<Runner | null> => {
+    if (settings.aiProvider !== "gemini") { runnerRef.current = null; return null; }
+    // Already have a runner with the right model — reuse it
+    if (runnerRef.current) return runnerRef.current;
+    const mod = await loadAdkModule();
+    if (!mod) {
+      console.warn("[ADK] @google/adk unavailable (Node.js SDK in browser) — using legacy @google/genai streaming.");
+      return null;
     }
-    let cancelled = false;
-    (adkModule ??= import("../src/adk/index")).then((mod) => {
-      if (cancelled) return;
-      const model = (settings.geminiModel || "gemini-2.0-flash")
-        .replace(/^gemini\//, "").replace(/^models\//, "");
-      runnerRef.current = mod.createAdkRunner({ model, sessionService: mod.sessionService });
-    }).catch((err) => {
-      if (cancelled) return;
-      console.warn("[ADK] Failed to load @google/adk in browser:", err);
-      console.warn("[ADK] ADK is a Node.js SDK — Gemini will fall back to legacy @google/genai streaming.");
-      runnerRef.current = null;
-    });
-    return () => { cancelled = true; };
+    const model = (settings.geminiModel || "gemini-2.0-flash")
+      .replace(/^gemini\//, "").replace(/^models\//, "");
+    runnerRef.current = mod.createAdkRunner({ model, sessionService: mod.sessionService });
+    return runnerRef.current;
   }, [settings.aiProvider, settings.geminiModel]);
 
   // Project context sync
@@ -225,8 +242,8 @@ export const useAdkChat = ({
       contextManager.addMessage(session.id, { role: "user", content: currentInput });
       collaborationManager.analyzeMessage(activeAgent, currentInput);
 
-      const runner = runnerRef.current;
-      const useAdk = !!(runner && settings.aiProvider === "gemini");
+      const runner = await getRunner();
+      const useAdk = !!runner;
 
       if (useAdk) {
         // ── ADK Runner path ──────────────────────────────────────────
@@ -331,7 +348,7 @@ export const useAdkChat = ({
       setIsProcessing(false);
       agentOrchestrator.stopHeartbeat(activeAgent);
     }
-  }, [isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
+  }, [isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, getRunner, onTasksUpdate, onFilesUpdate]);
 
   // ── Message management ────────────────────────────────────────────
 
