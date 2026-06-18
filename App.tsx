@@ -22,6 +22,7 @@ import { useAgenticSystems } from './hooks/useAgenticSystems';
 import { HITLDialog } from './components/HITLDialog';
 import { hitlManager, HITLRequest } from './src/pipelines/HITLManager';
 import { toolExecutor } from './src/tools/toolExecutor';
+import { BUILTIN_TOOLS } from './src/tools';
 import { connectBridge } from './src/tools/webSocketBridge';
 
 // Helper to cycle enum
@@ -143,6 +144,9 @@ export default function App() {
         });
       });
     }
+    
+    // Register built-in tools for agent execution
+    toolExecutor.registerTools(BUILTIN_TOOLS);
   }, []);
 
   // Use the new hooks

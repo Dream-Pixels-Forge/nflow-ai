@@ -43,7 +43,7 @@ interface MessageListProps {
   onRerunMessage?: (messageId: string) => void;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ 
+const MessageListInner: React.FC<MessageListProps> = ({ 
   messages, 
   activeAgent, 
   isProcessing, 
@@ -224,3 +224,10 @@ export const MessageList: React.FC<MessageListProps> = ({
     </>
   );
 };
+
+export const MessageList = React.memo(MessageListInner, (prev, next) => {
+  return prev.messages === next.messages
+    && prev.activeAgent === next.activeAgent
+    && prev.isProcessing === next.isProcessing
+    && prev.aiProvider === next.aiProvider;
+});

@@ -21,6 +21,8 @@ import { loadMessages, saveMessage, clearMessages } from "../src/persistence";
 import { sendMessageToAgentStream } from "../services/aiStreamService";
 import { stripAgentSwitchTags } from "../services/promptUtils";
 
+let adkModule: Promise<typeof import("../src/adk/index")> | null = null;
+
 // ── Public API (same as useAgentChat) ─────────────────────────────────
 
 export interface UseAgentChatProps {
@@ -80,9 +82,9 @@ export const useAdkChat = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<AM | null>(null);
   const [lastAgentResume, setLastAgentResume] = useState("");
+  const rerunHandlerRef = useRef<() => Promise<void>>(async () => {});
   const toolIterationRef = useRef(0);
   const runnerRef = useRef<Runner | null>(null);
-
   // Initialize ADK Runner when settings point to Gemini (dynamic import — ADK is Node-only)
   useEffect(() => {
     if (settings.aiProvider !== "gemini") {
@@ -90,7 +92,7 @@ export const useAdkChat = ({
       return;
     }
     let cancelled = false;
-    import("../src/adk/index").then((mod) => {
+    (adkModule ??= import("../src/adk/index")).then((mod) => {
       if (cancelled) return;
       const model = (settings.geminiModel || "gemini-2.0-flash")
         .replace(/^gemini\//, "").replace(/^models\//, "");
@@ -148,17 +150,18 @@ export const useAdkChat = ({
     })();
   }, []);
 
-  // Persist messages on change (debounced)
+  // Persist only the active agent's messages on change (debounced)
   useEffect(() => {
     if (!isLoaded.current) return;
     const id = setTimeout(() => {
-      for (const [mode, msgs] of Object.entries(agentHistories)) {
+      const msgs = agentHistories[activeAgent];
+      if (msgs) {
         const nonSystem = msgs.filter((m) => m.role !== "system");
-        if (nonSystem.length > 0) saveMessage(mode as AM, nonSystem[nonSystem.length - 1]).catch(() => {});
+        if (nonSystem.length > 0) saveMessage(activeAgent, nonSystem[nonSystem.length - 1]).catch(() => {});
       }
     }, 1000);
     return () => clearTimeout(id);
-  }, [agentHistories]);
+  }, [agentHistories, activeAgent]);
 
   // Auto-dispatch: CHAT agent routes to specialist (disabled when ADK runner active)
   useEffect(() => {
@@ -230,6 +233,14 @@ export const useAdkChat = ({
     const re = /(?:FILE:|\*\*FILE:\*\*)[ \t]*([^\r\n]+)(?:[\r\n]+\s*)*```(\w*)(?:[\r\n]+)([\s\S]*?)```/g;
     const newFiles: VirtualFile[] = [];
     let m;
+    while ((m = re.exec(content)) !== null) {
+      const name = m[1].trim();
+      const lang = m[2] || "";
+      const code = m[3].trim();
+      if (name && !newFiles.some((f) => f.name === name)) {
+        newFiles.push({ name, content: code, language: lang, status: "unmodified" as const });
+      }
+    }
     if (newFiles.length > 0) {
       onFilesUpdate(newFiles);
       try { memoryManager.addMemory({ type: "success", content: `New files: ${newFiles.map((f) => f.name).join(", ")}`, tags: ["files", "code-generation"], importance: "medium", metadata: { files: newFiles.map((f) => ({ name: f.name, language: f.language })) }, relatedEntries: [] }); } catch {}
@@ -368,6 +379,8 @@ export const useAdkChat = ({
       agentOrchestrator.stopHeartbeat(activeAgent);
     }
   }, [input, isProcessing, activeAgent, agentHistories, toolState, lastAgentResume, tasks, settings, onTasksUpdate, onFilesUpdate]);
+  // Keep rerunHandlerRef current
+  rerunHandlerRef.current = handleSendMessage;
 
   // ── Message management ────────────────────────────────────────────
 
@@ -400,11 +413,26 @@ export const useAdkChat = ({
       const msg = agentHistories[activeAgent].find((m) => m.id === messageId);
       if (msg && msg.role === "user") {
         setInput(msg.content);
-        setTimeout(() => handleSendMessage(), 100);
       }
     },
-    [activeAgent, agentHistories, handleSendMessage],
+    [activeAgent, agentHistories],
   );
+
+  // Trigger send when rerunMessage sets input — auto-submit after a brief delay
+  const rerunInputRef = useRef("");
+  useEffect(() => {
+    if (rerunInputRef.current !== input && input) {
+      rerunInputRef.current = input;
+      const prev = input;
+      const handler = rerunHandlerRef.current;
+      const id = setTimeout(() => {
+        setInput(prev);
+        handler();
+      }, 50);
+      return () => clearTimeout(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input]);
 
   const clearAllMessages = useCallback(() => {
     const h = {} as Record<AM, Message[]>;
